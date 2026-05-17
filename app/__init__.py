@@ -1,0 +1,2 @@
+"""Neiroha CosyVoice service package."""
+

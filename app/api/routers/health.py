@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Request
+
+from app.api.dependencies import get_runtime, get_voice_registry
+from app.core.profiles import VoiceRegistry
+from app.services.cosyvoice_runtime import CosyVoiceRuntime
+
+router = APIRouter(tags=["system"])
+
+
+@router.get("/")
+def root(runtime: CosyVoiceRuntime = Depends(get_runtime)) -> dict[str, str | bool]:
+    return {
+        "message": "Neiroha CosyVoice service is running.",
+        "model": runtime.model_id,
+        "model_loaded": runtime.model_loaded,
+    }
+
+
+@router.get("/health")
+@router.get("/api/health", include_in_schema=False)
+def health(
+    request: Request,
+    runtime: CosyVoiceRuntime = Depends(get_runtime),
+    registry: VoiceRegistry = Depends(get_voice_registry),
+) -> dict[str, object]:
+    return {
+        "status": "ok",
+        "model": runtime.model_id,
+        "model_loaded": runtime.model_loaded,
+        "sample_rate": runtime.sample_rate,
+        "profiles": [profile.id for profile in registry.list_profiles()],
+        "authRequired": bool(getattr(request.app.state, "api_key", "")),
+    }
+

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "demo-zero-shot",
+    "name": "Demo Zero Shot",
+    "mode": "zero_shot",
+    "prompt_audio": "D:/voices/reference.wav",
+    "prompt_text": "参考音频对应文本",
+    "description": "Example zero-shot profile. Copy this file to profiles/voices.json and edit paths."
+  },
+  {
+    "id": "demo-instruct",
+    "name": "Demo Instruct",
+    "mode": "instruct",
+    "prompt_audio": "D:/voices/reference.wav",
+    "instruct_text": "用温柔平静的语气朗读",
+    "description": "Example instruction profile."
+  }
+]

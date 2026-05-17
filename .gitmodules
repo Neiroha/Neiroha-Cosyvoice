@@ -1,0 +1,4 @@
+[submodule "CosyVoice"]
+	path = CosyVoice
+	url = https://github.com/FunAudioLLM/CosyVoice.git
+	ignore = dirty
