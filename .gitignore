@@ -14,6 +14,21 @@ models/*
 !models/.gitkeep
 runtime/*
 !runtime/.gitkeep
+!runtime/cache/
+!runtime/cache/.gitkeep
+!runtime/logs/
+!runtime/logs/.gitkeep
+!runtime/outputs/
+!runtime/outputs/.gitkeep
+!runtime/voices/
+!runtime/voices/**/
+!runtime/voices/**/voice.toml
+runtime/logs/*.log
+runtime/logs/*.err
+runtime/logs/*.out
+runtime/outputs/*
+!runtime/outputs/.gitkeep
+runtime/temp/
 
 profiles/voices.json
 profiles/*.local.json
@@ -25,4 +40,3 @@ profiles/*.local.json
 *.opus
 *.ogg
 *.pcm
-

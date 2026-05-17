@@ -61,14 +61,16 @@ torchvision = { url = "https://mirrors.aliyun.com/pytorch-wheels/cu128/torchvisi
 
 [tasks]
 submodule-init = { cmd = "git submodule update --init --recursive" }
-install = { cmd = "python scripts/download_cosyvoice_assets.py --model cosyvoice3 --source modelscope" }
-install-tokenizer = { cmd = "python scripts/download_cosyvoice_assets.py --model ttsfrd --source modelscope" }
-clone-smoke = { cmd = "python scripts/smoke_test_clone.py --model-dir models/Fun-CosyVoice3-0.5B --prompt-audio CosyVoice/asset/zero_shot_prompt.wav --prompt-text \"希望你以后能够做的比我还好呦。\" --output runtime/outputs/cosyvoice3_clone_smoke.wav" }
-api = { cmd = "python scripts/launch_cosyvoice.py --mode api --model-dir models/Fun-CosyVoice3-0.5B --port 9880" }
-api-preload = { cmd = "python scripts/launch_cosyvoice.py --mode api --model-dir models/Fun-CosyVoice3-0.5B --port 9880 --preload-model" }
-api-12080 = { cmd = "python scripts/launch_cosyvoice.py --mode api --model-dir models/Fun-CosyVoice3-0.5B --port 12080" }
-webui = { cmd = "python scripts/launch_cosyvoice.py --mode webui --model-dir models/Fun-CosyVoice3-0.5B --port 7860" }
-combined = { cmd = "python scripts/launch_cosyvoice.py --mode combined --model-dir models/Fun-CosyVoice3-0.5B --port 9880 --gradio-path /gradio" }
-combined-preload = { cmd = "python scripts/launch_cosyvoice.py --mode combined --model-dir models/Fun-CosyVoice3-0.5B --port 9880 --gradio-path /gradio --preload-model" }
-launcher-help = { cmd = "python scripts/launch_cosyvoice.py --help" }
+install = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model cosyvoice3 --source modelscope" }
+install-tokenizer = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model ttsfrd --source modelscope" }
+clone-smoke = { cmd = "python ./scripts/smoke_test_clone.py" }
+api = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api" }
+api-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-preload" }
+admin = { cmd = "python ./scripts/launch_cosyvoice3.py --mode admin" }
+api-admin = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin" }
+api-admin-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin-preload" }
+webui = { cmd = "python ./scripts/launch_cosyvoice3.py --mode admin" }
+combined = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin" }
+combined-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin-preload" }
+launcher-help = { cmd = "python ./scripts/launch_cosyvoice3.py --help" }
 test = { cmd = "python -m unittest discover tests" }

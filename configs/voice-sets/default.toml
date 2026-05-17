@@ -1,0 +1,5 @@
+schema_version = 1
+id = "default"
+name = "Default"
+description = "Default CosyVoice3 voices exposed as OpenAI TTS models."
+voices = ["prompt-clone", "cross-lingual-clone", "instruct-clone"]

@@ -11,7 +11,7 @@ class CosyVoiceSpeechRequest(BaseModel):
     model: str | None = Field(None, description="Compatibility model field.")
     text: str | None = Field(None, description="Text to synthesize.")
     input: str | None = Field(None, description="OpenAI-compatible alias for text.")
-    mode: str | None = Field(None, description="zero_shot | cross_lingual | instruct | sft")
+    mode: str | None = Field(None, description="prompt_clone | zero_shot | cross_lingual | instruct | sft")
     profile: str | None = Field(None, description="Registered server profile id or name.")
     character_name: str | None = Field(None, description="Compatibility alias for profile.")
     speaker: str | None = Field(None, description="Compatibility alias for profile.")
@@ -37,8 +37,7 @@ class CosyVoiceSpeechRequest(BaseModel):
 
 
 class OpenAISpeechRequest(CosyVoiceSpeechRequest):
-    model: str = "cosyvoice-openai-tts"
+    model: str = "default"
     input: str | None = Field(None, description="Text to synthesize.")
     voice: str | dict[str, Any] | None = Field(..., description="Registered profile id/name.")
     response_format: str = "mp3"
-

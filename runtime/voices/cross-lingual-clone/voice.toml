@@ -1,0 +1,17 @@
+schema_version = 1
+id = "cross-lingual-clone"
+name = "Cross Lingual Clone"
+mode = "cross_lingual"
+model_preset = "cosyvoice3-default"
+reference_audio = "CosyVoice/asset/zero_shot_prompt.wav"
+prompt_audio = ""
+prompt_text = ""
+text_lang = "zh"
+prompt_lang = "zh"
+instruction = ""
+speed = 1.0
+
+[engine_options]
+speaker_id = ""
+speaker_embedding_path = ""
+adapter_path = ""

@@ -6,9 +6,15 @@ from pathlib import Path
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPO_DIR = WORKSPACE_ROOT / "CosyVoice"
+CONFIG_ROOT = WORKSPACE_ROOT / "configs"
+SERVER_CONFIG_PATH = CONFIG_ROOT / "server.toml"
+MODEL_PRESETS_DIR = CONFIG_ROOT / "model-presets"
+VOICE_SETS_DIR = CONFIG_ROOT / "voice-sets"
 MODELS_ROOT = WORKSPACE_ROOT / "models"
 CACHE_ROOT = MODELS_ROOT / "_cache"
 RUNTIME_ROOT = WORKSPACE_ROOT / "runtime"
+RUNTIME_CACHE_ROOT = RUNTIME_ROOT / "cache"
+RUNTIME_VOICES_ROOT = RUNTIME_ROOT / "voices"
 TEMP_ROOT = RUNTIME_ROOT / "temp"
 UPLOAD_ROOT = TEMP_ROOT / "uploads"
 OUTPUT_ROOT = RUNTIME_ROOT / "outputs"
@@ -20,6 +26,9 @@ TTSFRD_MODEL_DIR = MODELS_ROOT / "CosyVoice-ttsfrd"
 OFFICIAL_TTSFRD_MODEL_DIR = DEFAULT_REPO_DIR / "pretrained_models" / "CosyVoice-ttsfrd"
 DEFAULT_MODEL_DIR = MODELS_ROOT / "Fun-CosyVoice3-0.5B"
 DEFAULT_PROFILE_PATH = WORKSPACE_ROOT / "profiles" / "voices.json"
+DEFAULT_MODEL_PRESET_ID = "cosyvoice3-default"
+DEFAULT_VOICE_SET_ID = "default"
+DEFAULT_VOICE_ID = "prompt-clone"
 
 
 def prepare_runtime_environment() -> None:
@@ -27,6 +36,8 @@ def prepare_runtime_environment() -> None:
         MODELS_ROOT,
         CACHE_ROOT,
         RUNTIME_ROOT,
+        RUNTIME_CACHE_ROOT,
+        RUNTIME_VOICES_ROOT,
         TEMP_ROOT,
         UPLOAD_ROOT,
         OUTPUT_ROOT,

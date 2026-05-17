@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import datetime as dt
+import hashlib
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -7,8 +10,9 @@ from typing import Any
 from fastapi import UploadFile
 from fastapi.responses import JSONResponse, Response
 
-from app.core.config import UPLOAD_ROOT
+from app.core.config import OUTPUT_ROOT, UPLOAD_ROOT, WORKSPACE_ROOT
 from app.core.profiles import first_non_empty, normalize_mode_name, strip_text
+from app.core.runtime_logs import RUNTIME_EVENTS
 from app.core.schemas import CosyVoiceSpeechRequest
 from app.services.audio import pack_audio
 from app.services.cosyvoice_runtime import SynthesisInput, SynthesisResult
@@ -46,6 +50,40 @@ def require_existing_file(raw_path: str, *, field_name: str) -> str:
     return str(path.resolve())
 
 
+def safe_ascii_filename_part(value: Any, fallback: str = "speech") -> str:
+    raw = strip_text(value) or fallback
+    text = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", raw)
+    text = re.sub(r"\s+", "_", text).strip("._- ")
+    ascii_text = text.encode("ascii", errors="ignore").decode("ascii")
+    ascii_text = re.sub(r"[^A-Za-z0-9._-]+", "_", ascii_text)
+    ascii_text = re.sub(r"_+", "_", ascii_text).strip("._-")
+    if ascii_text:
+        return ascii_text[:80]
+    digest = hashlib.sha1(raw.encode("utf-8", errors="ignore")).hexdigest()[:10]
+    return f"{fallback}_{digest}"
+
+
+def workspace_relative_path(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(WORKSPACE_ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
+def write_runtime_output(content: bytes, voice_name: str, extension: str) -> Path:
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
+    timestamp = dt.datetime.now().strftime("%Y%m%d%H%M%S")
+    stem = safe_ascii_filename_part(voice_name, fallback="speech")
+    path = OUTPUT_ROOT / f"{stem}_{timestamp}.{extension}"
+    counter = 1
+    while path.exists():
+        path = OUTPUT_ROOT / f"{stem}_{timestamp}_{counter}.{extension}"
+        counter += 1
+    path.write_bytes(content)
+    return path
+
+
 async def save_uploaded_audio(uploaded_audio: UploadFile | None, *, prefix: str = "prompt") -> str:
     if uploaded_audio is None or not uploaded_audio.filename:
         return ""
@@ -71,11 +109,24 @@ def cleanup_temp_file(path: str) -> None:
 
 def audio_response(result: SynthesisResult, response_format: str) -> Response:
     packed = pack_audio(result.audio, result.sample_rate, response_format)
+    output_path = write_runtime_output(packed.content, result.voice_name or result.mode, packed.extension)
+    output_relative = workspace_relative_path(output_path)
+    filename = output_path.name
+    RUNTIME_EVENTS.append(
+        "synthesis_complete",
+        voice=result.voice_name or result.mode,
+        mode=result.mode,
+        audio_seconds=result.audio_seconds,
+        elapsed_seconds=result.elapsed_seconds,
+        rtf=result.rtf,
+        output=output_relative,
+    )
     return Response(
         content=packed.content,
         media_type=packed.media_type,
         headers={
-            "Content-Disposition": f'inline; filename="speech.{packed.extension}"',
+            "Content-Disposition": f'inline; filename="{filename}"',
+            "X-Neiroha-Output-Path": output_relative,
             "X-Neiroha-Audio-Seconds": f"{result.audio_seconds:.6f}",
             "X-Neiroha-Elapsed-Seconds": f"{result.elapsed_seconds:.6f}",
             "X-Neiroha-RTF": f"{result.rtf:.6f}",
@@ -139,6 +190,13 @@ def payload_sft_spk(payload: CosyVoiceSpeechRequest) -> str:
     return first_non_empty(payload.sft_spk, payload.spk_id)
 
 
+def payload_voice_set_id(payload: CosyVoiceSpeechRequest, registry) -> str:
+    requested = strip_text(payload.model)
+    if not requested or requested in {"cosyvoice", "cosyvoice-openai-tts", "tts-1", "tts-1-hd"}:
+        return registry.active_voice_set_id()
+    return requested
+
+
 def build_synthesis_input(
     payload: CosyVoiceSpeechRequest,
     *,
@@ -150,21 +208,27 @@ def build_synthesis_input(
     if not text:
         raise ValueError("text/input is required.")
 
+    voice_set_id = payload_voice_set_id(payload, registry)
+    try:
+        voice_set = registry.get_voice_set(voice_set_id)
+    except KeyError as exc:
+        raise ValueError(f"未找到 voice set: {voice_set_id}") from exc
+
     profile_name = payload_profile_name(payload)
-    profile = registry.get_optional(profile_name) if profile_name else None
+    profile = registry.get_optional(profile_name, voice_set_id=voice_set.id) if profile_name else None
 
     request_prompt_audio = uploaded_prompt_audio or payload_prompt_audio(payload)
     has_ad_hoc_prompt_audio = bool(request_prompt_audio)
     if profile_name and profile is None and (strict_profile or not has_ad_hoc_prompt_audio):
         raise ValueError(f"未找到角色: {profile_name}")
 
-    prompt_audio = first_non_empty(request_prompt_audio, profile.prompt_audio if profile else "")
+    prompt_audio = first_non_empty(request_prompt_audio, profile.prompt_audio_path if profile else "")
     prompt_text = first_non_empty(payload_prompt_text(payload), profile.prompt_text if profile else "")
     instruct_text = first_non_empty(payload_instruct_text(payload), profile.instruct_text if profile else "")
     sft_spk = first_non_empty(payload_sft_spk(payload), profile.sft_spk if profile else "")
     mode = infer_mode(payload, prompt_audio=prompt_audio, prompt_text=prompt_text, instruct_text=instruct_text)
     if not mode and profile is not None:
-        mode = profile.mode
+        mode = profile.engine_mode
     if not mode:
         raise ValueError("mode is required, or provide profile/prompt fields that imply a mode.")
 
@@ -178,9 +242,8 @@ def build_synthesis_input(
         prompt_text=prompt_text,
         instruct_text=instruct_text,
         sft_spk=sft_spk,
-        speed=float(payload.speed or 1.0),
+        speed=float(payload.speed or (profile.speed if profile else 1.0) or 1.0),
         seed=payload.seed,
         text_frontend=bool(payload.text_frontend),
-        voice_name=profile.name if profile else profile_name,
+        voice_name=profile.id if profile else profile_name,
     )
-

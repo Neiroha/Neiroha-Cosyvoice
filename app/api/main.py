@@ -27,6 +27,8 @@ def create_api_app(
     voice_registry: VoiceRegistry,
     *,
     api_key: str = "",
+    api_url: str = "",
+    admin_url: str = "",
     cors_origins: list[str] | None = None,
 ) -> FastAPI:
     app = FastAPI(
@@ -38,6 +40,8 @@ def create_api_app(
     app.state.runtime = runtime
     app.state.voice_registry = voice_registry
     app.state.api_key = api_key
+    app.state.api_url = api_url
+    app.state.admin_url = admin_url
 
     app.add_middleware(
         CORSMiddleware,
@@ -68,4 +72,3 @@ def create_api_app(
     app.include_router(openai_router)
     app.include_router(cosyvoice_router)
     return app
-

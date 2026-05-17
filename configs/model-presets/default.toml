@@ -1,0 +1,12 @@
+schema_version = 1
+id = "cosyvoice3-default"
+name = "CosyVoice3 Default"
+engine = "cosyvoice3"
+
+[cosyvoice3]
+model_dir = "models/Fun-CosyVoice3-0.5B"
+fp16 = false
+load_jit = false
+load_trt = false
+load_vllm = false
+trt_concurrent = 1

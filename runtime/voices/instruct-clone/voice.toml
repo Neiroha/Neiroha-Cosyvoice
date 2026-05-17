@@ -1,0 +1,17 @@
+schema_version = 1
+id = "instruct-clone"
+name = "Instruct Clone"
+mode = "instruct"
+model_preset = "cosyvoice3-default"
+reference_audio = "CosyVoice/asset/zero_shot_prompt.wav"
+prompt_audio = ""
+prompt_text = ""
+text_lang = "zh"
+prompt_lang = "zh"
+instruction = "用温柔平静的语气朗读。"
+speed = 1.0
+
+[engine_options]
+speaker_id = ""
+speaker_embedding_path = ""
+adapter_path = ""

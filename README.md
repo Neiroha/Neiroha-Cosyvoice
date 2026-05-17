@@ -1,7 +1,7 @@
-# Neiroha CosyVoice Local Service
+# Neiroha CosyVoice3 Local Service
 
-CosyVoice native service for Neiroha. The outer repository owns Pixi, FastAPI,
-Gradio, profiles and runtime files. The official
+CosyVoice3 native service for Neiroha. The outer repository owns Pixi,
+FastAPI, Gradio Admin, TOML configuration and runtime files. The official
 [FunAudioLLM/CosyVoice](https://github.com/FunAudioLLM/CosyVoice) repository is
 kept as the `CosyVoice/` Git submodule.
 
@@ -11,41 +11,60 @@ kept as the `CosyVoice/` Git submodule.
 pixi install
 pixi run submodule-init
 pixi run install
-Copy-Item profiles/voices.example.json profiles/voices.json
 pixi run clone-smoke
-pixi run combined
+pixi run api-admin
 ```
 
-FastAPI is served from `http://127.0.0.1:9880`; Gradio is mounted at
-`http://127.0.0.1:9880/gradio` in `combined` mode.
+`pixi run api-admin` reads ports from `configs/server.toml`. Defaults are:
+
+- FastAPI: `http://127.0.0.1:19890`
+- Gradio Admin: `http://127.0.0.1:17870`
+
+If a configured port is unavailable, the launcher picks a random bindable port
+and records the actual URL in `runtime/logs/backend.log` and `/health`.
 
 `pixi run install` uses ModelScope by default. It downloads the default
 CosyVoice3 runtime model `FunAudioLLM/Fun-CosyVoice3-0.5B-2512` to
-`models/Fun-CosyVoice3-0.5B` and the matching `CosyVoice-ttsfrd` text frontend
-resource to `models/CosyVoice-ttsfrd`. All ModelScope, Hugging Face,
-Transformers, Torch and temp caches are forced under this project, mainly
-`models/_cache` and `runtime/temp`; the downloader rejects destinations outside
-`./models`.
+`models/Fun-CosyVoice3-0.5B` and the matching `CosyVoice-ttsfrd` resource to
+`models/CosyVoice-ttsfrd`. ModelScope, Hugging Face, Transformers, Torch and
+temp caches are forced under this project, mainly `models/_cache` and
+`runtime/temp`; the downloader rejects destinations outside `./models`.
 
-The official CosyVoice frontend looks for `CosyVoice/pretrained_models` at
-runtime. The launcher creates only a local junction/symlink from that expected
-path to `models/CosyVoice-ttsfrd`; the resource itself stays under `./models`.
+## Configuration
+
+Local configuration is TOML-first:
+
+```text
+configs/server.toml
+configs/model-presets/default.toml
+configs/voice-sets/default.toml
+runtime/voices/prompt-clone/voice.toml
+runtime/voices/cross-lingual-clone/voice.toml
+runtime/voices/instruct-clone/voice.toml
+```
+
+OpenAI-compatible `model` means voice set, not the underlying CosyVoice3
+checkpoint. The active checkpoint is selected by a model preset, and each
+voice profile can point at a preset through `model_preset`.
+
+Default clone voice configs keep the three CosyVoice3 native clone paths:
+
+- `prompt_clone`: CosyVoice3 zero-shot clone with prompt text.
+- `cross_lingual`: prompt-audio clone without prompt text.
+- `instruct`: CosyVoice3 instruct clone with prompt audio and instruction.
 
 ## Run Modes
 
 ```powershell
 pixi run api
 pixi run api-preload
-pixi run webui
-pixi run combined
-pixi run clone-smoke
+pixi run admin
+pixi run api-admin
+pixi run api-admin-preload
 ```
 
-Useful direct launcher example:
-
-```powershell
-pixi run python scripts/launch_cosyvoice.py --mode api --model-dir models/Fun-CosyVoice3-0.5B --port 12080 --preload-model
-```
+`api-admin` starts FastAPI and an independent Gradio Admin process. Gradio is
+not mounted into FastAPI by default.
 
 ## API Surface
 
@@ -54,6 +73,9 @@ Neiroha CosyVoice native adapter:
 - `GET /health`
 - `GET /speakers`
 - `GET /cosyvoice/profiles`
+- `GET /cosyvoice/meta`
+- `GET /cosyvoice3/capabilities`
+- `GET /cosyvoice3/logs`
 - `POST /cosyvoice/speech`
 - `POST /cosyvoice/speech/upload`
 
@@ -64,18 +86,3 @@ OpenAI compatible:
 - `POST /v1/audio/speech`
 
 See [docs/api.md](docs/api.md) for payload examples.
-
-## Profiles
-
-Copy `profiles/voices.example.json` to `profiles/voices.json` and edit local
-audio paths. The service reads the file on each request, so profile edits do
-not require a server restart.
-
-Supported profile modes:
-
-- `zero_shot`
-- `cross_lingual`
-- `instruct`
-
-For CosyVoice 3, the launcher applies the required `<|endofprompt|>` prompt
-formatting used by the official examples.

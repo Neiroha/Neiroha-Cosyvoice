@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 
 from app.api.common import (
     audio_response,
@@ -12,6 +12,7 @@ from app.api.common import (
 )
 from app.api.dependencies import get_runtime, get_voice_registry
 from app.core.profiles import MODE_ALIASES, MODE_LABELS, VoiceRegistry
+from app.core.runtime_logs import LOG_FILES, RUNTIME_EVENTS, read_log_file
 from app.core.schemas import CosyVoiceSpeechRequest
 from app.services.audio import CONTENT_TYPES
 from app.services.cosyvoice_runtime import CosyVoiceRuntime
@@ -28,29 +29,48 @@ def _speaker_items(registry: VoiceRegistry) -> list[dict[str, object]]:
 
 
 @router.get("/cosyvoice/profiles", summary="List registered CosyVoice profiles")
+@router.get("/cosyvoice3/profiles", include_in_schema=False)
 def cosyvoice_profiles(registry: VoiceRegistry = Depends(get_voice_registry)):
-    return {"object": "list", "data": _profile_items(registry)}
+    return {
+        "object": "list",
+        "data": _profile_items(registry),
+        "voice_sets": [voice_set.to_openai_model(len(registry.list_profiles(voice_set.id))) for voice_set in registry.list_voice_sets()],
+    }
 
 
 @router.get("/cosyvoice/meta", summary="Describe native CosyVoice capabilities")
+@router.get("/cosyvoice3/meta", include_in_schema=False)
+@router.get("/cosyvoice3/capabilities", include_in_schema=False)
 def cosyvoice_meta(
+    request: Request,
     runtime: CosyVoiceRuntime = Depends(get_runtime),
     registry: VoiceRegistry = Depends(get_voice_registry),
 ):
+    api_url = getattr(request.app.state, "api_url", "")
+    admin_url = getattr(request.app.state, "admin_url", "")
     return {
-        "provider": "cosyvoice",
+        "provider": "cosyvoice3",
         "model": runtime.model_id,
         "model_loaded": runtime.model_loaded,
+        "api_url": api_url,
+        "admin_url": admin_url,
+        "runtime": {
+            "active_model_preset": registry.active_model_preset_id(),
+            "active_voice_set": registry.active_voice_set_id(),
+            "default_voice": registry.default_voice_id(),
+        },
         "paths": {
             "health": "/health",
             "native_json": "/cosyvoice/speech",
             "native_upload": "/cosyvoice/speech/upload",
             "profiles": "/cosyvoice/profiles",
+            "capabilities": "/cosyvoice3/capabilities",
+            "logs": "/cosyvoice3/logs",
             "speakers": "/speakers",
             "openai_models": "/v1/models",
             "openai_voices": "/v1/audio/voices",
             "openai_speech": "/v1/audio/speech",
-            "gradio": "/gradio",
+            "admin": admin_url,
         },
         "supports": {
             "native_json": True,
@@ -58,21 +78,32 @@ def cosyvoice_meta(
             "prompt_audio_upload": True,
             "profile_lookup": True,
             "openai_compatible": True,
+            "voice_sets": True,
+            "model_presets": True,
             "sft": True,
         },
         "modes": [
             {
+                "id": "prompt_clone",
+                "engine_mode": "zero_shot",
+                "label": MODE_LABELS["prompt_clone"],
+                "required_fields": ["text", "prompt_audio_path|prompt_audio|profile", "prompt_text"],
+            },
+            {
                 "id": "zero_shot",
+                "engine_mode": "zero_shot",
                 "label": MODE_LABELS["zero_shot"],
                 "required_fields": ["text", "prompt_audio_path|prompt_audio|profile", "prompt_text"],
             },
             {
                 "id": "cross_lingual",
+                "engine_mode": "cross_lingual",
                 "label": MODE_LABELS["cross_lingual"],
                 "required_fields": ["text", "prompt_audio_path|prompt_audio|profile"],
             },
             {
                 "id": "instruct",
+                "engine_mode": "instruct",
                 "label": MODE_LABELS["instruct"],
                 "required_fields": ["text", "prompt_audio_path|prompt_audio|profile", "instruct_text"],
             },
@@ -84,7 +115,26 @@ def cosyvoice_meta(
         ],
         "aliases": MODE_ALIASES,
         "response_formats": sorted(CONTENT_TYPES),
+        "model_presets": [preset.to_native_item() for preset in registry.list_model_presets()],
+        "voice_sets": [voice_set.to_openai_model(len(registry.list_profiles(voice_set.id))) for voice_set in registry.list_voice_sets()],
         "profiles": _profile_items(registry),
+    }
+
+
+@router.get("/cosyvoice3/logs", summary="Read CosyVoice3 runtime logs")
+def cosyvoice_logs(
+    name: str = Query("backend.log", description="backend.log, backend.previous.log, admin-ui.out.log, admin-ui.err.log, download.out.log, download.err.log"),
+    limit: int = Query(160, ge=1, le=1000),
+):
+    path = LOG_FILES.get(name)
+    if path is None:
+        raise HTTPException(status_code=404, detail=f"Unknown log file: {name}")
+    return {
+        "object": "log",
+        "name": name,
+        "path": str(path),
+        "newest_first": True,
+        "content": read_log_file(path, limit=limit, newest_first=True),
     }
 
 
@@ -196,4 +246,3 @@ def legacy_native_speech(
     registry: VoiceRegistry = Depends(get_voice_registry),
 ):
     return cosyvoice_speech(payload, runtime=runtime, registry=registry)
-

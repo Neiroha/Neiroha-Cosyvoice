@@ -16,18 +16,20 @@ from app.services.cosyvoice_runtime import CosyVoiceRuntime
 
 router = APIRouter(tags=["openai"])
 
-OPENAI_MODEL_ALIAS = "cosyvoice-openai-tts"
-
 
 @router.get("/v1/models", summary="List available models")
 @router.get("/models", include_in_schema=False)
-def list_models(runtime: CosyVoiceRuntime = Depends(get_runtime)):
+def list_models(registry: VoiceRegistry = Depends(get_voice_registry)):
+    voice_sets = registry.list_voice_sets()
+    profiles_by_set = {
+        voice_set.id: registry.list_profiles(voice_set.id)
+        for voice_set in voice_sets
+    }
     return {
         "object": "list",
         "data": [
-            {"id": OPENAI_MODEL_ALIAS, "object": "model", "owned_by": "neiroha"},
-            {"id": "tts-1", "object": "model", "owned_by": "openai-compatible", "root_model": OPENAI_MODEL_ALIAS},
-            {"id": runtime.model_id, "object": "model", "owned_by": "local"},
+            voice_set.to_openai_model(len(profiles_by_set.get(voice_set.id, [])))
+            for voice_set in voice_sets
         ],
     }
 
@@ -37,7 +39,14 @@ def list_models(runtime: CosyVoiceRuntime = Depends(get_runtime)):
 @router.get("/audio/voices", include_in_schema=False)
 def list_voices(registry: VoiceRegistry = Depends(get_voice_registry)):
     voices = [profile.to_openai_voice_item() for profile in registry.list_profiles()]
-    return {"object": "list", "data": voices, "voices": voices}
+    return {
+        "object": "list",
+        "data": voices,
+        "voices": [
+            {"voice_id": voice["voice_id"], "name": voice["name"], "model": voice["model"]}
+            for voice in voices
+        ],
+    }
 
 
 @router.post("/v1/audio/speech", summary="Generate speech (OpenAI compatible)")
@@ -70,4 +79,3 @@ def openai_speech(
         return openai_error(message, status_code=status)
     except Exception as exc:
         return openai_error(str(exc), status_code=500, error_type="server_error")
-
