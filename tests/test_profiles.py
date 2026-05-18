@@ -13,6 +13,7 @@ from app.api.main import create_api_app
 from app.gradio_app import build_gradio_admin_blocks
 from app.core.profiles import VoiceRegistry, mode_label, normalize_mode_name, profile_mode_name, write_toml_mapping
 from app.services.cosyvoice_runtime import SynthesisInput, SynthesisResult
+from scripts.download_cosyvoice_assets import MODEL_CATALOG, frontend_resources
 
 
 class DummyRuntime:
@@ -176,6 +177,13 @@ class ProfileTests(unittest.TestCase):
                 os.environ.pop("NEIROHA_COSYVOICE3_UI_LANG", None)
             else:
                 os.environ["NEIROHA_COSYVOICE3_UI_LANG"] = previous
+
+    def test_windows_auto_frontend_prefetches_wetext(self) -> None:
+        self.assertEqual(frontend_resources("auto", system_name="Windows"), ["wetext"])
+        self.assertEqual(frontend_resources("auto", system_name="Linux"), ["ttsfrd"])
+        self.assertEqual(frontend_resources("both", system_name="Windows"), ["wetext", "ttsfrd"])
+        self.assertIn("wetext", MODEL_CATALOG)
+        self.assertTrue(MODEL_CATALOG["cosyvoice3"]["with_frontend"])
 
 
 if __name__ == "__main__":

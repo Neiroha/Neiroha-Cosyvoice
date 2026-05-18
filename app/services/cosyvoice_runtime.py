@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.core.config import DEFAULT_REPO_DIR, WORKSPACE_ROOT, prepare_runtime_environment
+from app.core.config import DEFAULT_REPO_DIR, WORKSPACE_ROOT, patch_wetext_local_snapshot, prepare_runtime_environment
 from app.core.profiles import mode_label, normalize_mode_name, strip_text
 from app.services.audio import audio_duration_seconds
 
@@ -109,6 +109,7 @@ class CosyVoiceRuntime:
             if path.exists() and str(path) not in sys.path:
                 sys.path.insert(0, str(path))
         os.environ.setdefault("TQDM_DISABLE", "1")
+        patch_wetext_local_snapshot()
         _patch_ruamel_loader_compat()
         self._imports_ready = True
 
@@ -347,4 +348,3 @@ class CosyVoiceRuntime:
             mode=mode,
             voice_name=strip_text(request.voice_name),
         )
-

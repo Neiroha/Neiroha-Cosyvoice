@@ -25,8 +25,11 @@ and records the actual URL in `runtime/logs/backend.log` and `/health`.
 
 `pixi run install` uses ModelScope by default. It downloads the default
 CosyVoice3 runtime model `FunAudioLLM/Fun-CosyVoice3-0.5B-2512` to
-`models/Fun-CosyVoice3-0.5B` and the matching `CosyVoice-ttsfrd` resource to
-`models/CosyVoice-ttsfrd`. ModelScope, Hugging Face, Transformers, Torch and
+`models/Fun-CosyVoice3-0.5B`. On Windows, CosyVoice falls back to `wetext`, so
+the default install also pre-downloads `pengzhendong/wetext` into
+`models/_cache/modelscope/models/pengzhendong/wetext`. On non-Windows systems,
+the auto frontend target remains `CosyVoice-ttsfrd`; `pixi run install-ttsfrd`
+is also available explicitly. ModelScope, Hugging Face, Transformers, Torch and
 temp caches are forced under this project, mainly `models/_cache` and
 `runtime/temp`; the downloader rejects destinations outside `./models`.
 
@@ -61,6 +64,14 @@ pixi run api-preload
 pixi run admin
 pixi run api-admin
 pixi run api-admin-preload
+```
+
+Useful download tasks:
+
+```powershell
+pixi run install
+pixi run install-wetext
+pixi run install-ttsfrd
 ```
 
 `api-admin` starts FastAPI and an independent Gradio Admin process. Gradio is

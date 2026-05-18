@@ -103,6 +103,9 @@ fields plus `prompt_audio` as the uploaded reference audio file.
 
 ## Local Model Policy
 
-The default install path is CosyVoice3 plus the matching `CosyVoice-ttsfrd`
-resource. Both are stored under project-local `./models`; ModelScope is the
-default download source. CosyVoice2 is not part of the default install path.
+The default install path is CosyVoice3 plus the text frontend resource used by
+the current platform. Windows uses `wetext`, so `pixi run install` pre-downloads
+`pengzhendong/wetext` into `./models/_cache/modelscope/models/pengzhendong/wetext`
+instead of waiting for first inference to fetch it. `CosyVoice-ttsfrd` remains
+available through `pixi run install-ttsfrd` for environments that can use it.
+CosyVoice2 is not part of the default install path.

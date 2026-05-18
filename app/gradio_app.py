@@ -60,8 +60,9 @@ TEXT = {
         "save_result": "保存结果",
         "download_source": "下载源",
         "force_redownload": "强制重新下载",
-        "download_base": "下载 CosyVoice3 + ttsfrd",
-        "download_tokenizer": "下载 ttsfrd",
+        "download_base": "下载 CosyVoice3 + 前端资源",
+        "download_tokenizer": "下载 wetext",
+        "download_ttsfrd": "下载 ttsfrd",
         "download_status": "下载状态",
         "stop_download": "停止下载",
         "log_source": "日志源",
@@ -103,8 +104,9 @@ TEXT = {
         "save_result": "Save Result",
         "download_source": "Download Source",
         "force_redownload": "Force Redownload",
-        "download_base": "Download CosyVoice3 + ttsfrd",
-        "download_tokenizer": "Download ttsfrd",
+        "download_base": "Download CosyVoice3 + frontend",
+        "download_tokenizer": "Download wetext",
+        "download_ttsfrd": "Download ttsfrd",
         "download_status": "Download Status",
         "stop_download": "Stop Download",
         "log_source": "Log Source",
@@ -419,11 +421,13 @@ def build_gradio_admin_blocks(
             with gr.Row():
                 download_base_btn = gr.Button(t("download_base"))
                 download_tokenizer_btn = gr.Button(t("download_tokenizer"))
+                download_ttsfrd_btn = gr.Button(t("download_ttsfrd"))
                 download_stop_btn = gr.Button(t("stop_download"))
                 download_refresh_btn = gr.Button(t("refresh"))
             download_status = gr.Textbox(value=download_manager.status(), label=t("download_status"), lines=22)
             download_base_btn.click(lambda source, force: download_manager.start("cosyvoice3", source, force), inputs=[download_source, download_force], outputs=download_status)
-            download_tokenizer_btn.click(lambda source, force: download_manager.start("ttsfrd", source, force), inputs=[download_source, download_force], outputs=download_status)
+            download_tokenizer_btn.click(lambda source, force: download_manager.start("wetext", source, force), inputs=[download_source, download_force], outputs=download_status)
+            download_ttsfrd_btn.click(lambda source, force: download_manager.start("ttsfrd", source, force), inputs=[download_source, download_force], outputs=download_status)
             download_stop_btn.click(download_manager.stop, outputs=download_status)
             download_refresh_btn.click(download_manager.status, outputs=download_status)
 

@@ -62,7 +62,10 @@ torchvision = { url = "https://mirrors.aliyun.com/pytorch-wheels/cu128/torchvisi
 [tasks]
 submodule-init = { cmd = "git submodule update --init --recursive" }
 install = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model cosyvoice3 --source modelscope" }
-install-tokenizer = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model ttsfrd --source modelscope" }
+install-frontend = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
+install-wetext = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
+install-ttsfrd = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model ttsfrd --source modelscope" }
+install-tokenizer = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
 clone-smoke = { cmd = "python ./scripts/smoke_test_clone.py" }
 api = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api" }
 api-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-preload" }

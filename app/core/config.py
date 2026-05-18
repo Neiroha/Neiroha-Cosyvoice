@@ -24,6 +24,7 @@ HUGGINGFACE_CACHE_ROOT = CACHE_ROOT / "huggingface"
 TORCH_CACHE_ROOT = CACHE_ROOT / "torch"
 TTSFRD_MODEL_DIR = MODELS_ROOT / "CosyVoice-ttsfrd"
 OFFICIAL_TTSFRD_MODEL_DIR = DEFAULT_REPO_DIR / "pretrained_models" / "CosyVoice-ttsfrd"
+WETEXT_MODEL_DIR = MODELSCOPE_CACHE_ROOT / "models" / "pengzhendong" / "wetext"
 DEFAULT_MODEL_DIR = MODELS_ROOT / "Fun-CosyVoice3-0.5B"
 DEFAULT_PROFILE_PATH = WORKSPACE_ROOT / "profiles" / "voices.json"
 DEFAULT_MODEL_PRESET_ID = "cosyvoice3-default"
@@ -63,6 +64,7 @@ def prepare_runtime_environment() -> None:
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
     os.environ.setdefault("TQDM_DISABLE", "1")
     ensure_ttsfrd_resource_link()
+    patch_wetext_local_snapshot()
 
 
 def ensure_ttsfrd_resource_link() -> None:
@@ -92,6 +94,26 @@ def ensure_ttsfrd_resource_link() -> None:
         )
     except (OSError, subprocess.CalledProcessError):
         pass
+
+
+def patch_wetext_local_snapshot() -> bool:
+    if not WETEXT_MODEL_DIR.exists():
+        return False
+
+    try:
+        import wetext.wetext as wetext_module
+    except ImportError:
+        return False
+
+    def local_snapshot_download(model_id: str, *args, **kwargs) -> str:
+        if model_id == "pengzhendong/wetext":
+            return str(WETEXT_MODEL_DIR)
+        from modelscope import snapshot_download
+
+        return snapshot_download(model_id, *args, **kwargs)
+
+    wetext_module.snapshot_download = local_snapshot_download
+    return True
 
 
 prepare_runtime_environment()
