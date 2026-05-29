@@ -23,14 +23,63 @@ from app.core.runtime_logs import (
     truncate_log,
 )
 
+ADMIN_CSS = """
+.gradio-container {
+  max-width: 1320px !important;
+}
+.neiroha-header {
+  padding: 6px 0 14px 0;
+  border-bottom: 1px solid var(--border-color-primary);
+}
+.neiroha-header h1 {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  line-height: 1.25;
+}
+.neiroha-muted {
+  color: var(--body-text-color-subdued);
+}
+.neiroha-status table,
+.neiroha-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.neiroha-status td,
+.neiroha-status th,
+.neiroha-table td,
+.neiroha-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color-primary);
+}
+.neiroha-status td:first-child,
+.neiroha-table td:first-child {
+  color: var(--body-text-color-subdued);
+  width: 220px;
+}
+.neiroha-section {
+  padding-top: 4px;
+}
+.neiroha-section h3 {
+  margin-top: 0;
+}
+.neiroha-log textarea,
+.neiroha-log .cm-editor {
+  font-family: Consolas, "Cascadia Mono", monospace !important;
+}
+footer {
+  display: none !important;
+}
+"""
+
 TEXT = {
     "zh": {
         "title": "Neiroha CosyVoice3 Admin",
+        "subtitle": "本地 CosyVoice3 推理、Voice Set、音色克隆配置与日志管理",
         "home": "首页",
         "trial": "试音",
         "voice_config": "克隆配置",
-        "voice_sets": "Voice Sets",
-        "model_presets": "Model Presets",
+        "voice_sets": "音色集合",
+        "model_presets": "模型预设",
         "download": "下载",
         "logs": "日志",
         "refresh": "刷新",
@@ -67,9 +116,28 @@ TEXT = {
         "stop_download": "停止下载",
         "log_source": "日志源",
         "auto_refresh": "自动刷新",
+        "runtime_status": "运行状态",
+        "connection": "连接",
+        "configuration": "配置",
+        "current_language": "界面语言",
+        "online": "在线",
+        "offline": "离线",
+        "loaded": "已加载",
+        "not_loaded": "未加载",
+        "preview_section": "语音预览",
+        "preview_controls": "合成参数",
+        "voice_identity": "音色身份",
+        "reference_section": "参考音频",
+        "clone_defaults": "默认参数",
+        "save_success": "已保存",
+        "reference_audio": "参考音频",
+        "download_frontend": "前端资源",
+        "log_viewer": "日志查看",
+        "default_preview_text": "你好，这是 Neiroha CosyVoice3 的语音复刻测试。",
     },
     "en": {
         "title": "Neiroha CosyVoice3 Admin",
+        "subtitle": "Local CosyVoice3 inference, voice sets, clone profiles, and logs",
         "home": "Home",
         "trial": "Trial",
         "voice_config": "Voice Config",
@@ -111,6 +179,24 @@ TEXT = {
         "stop_download": "Stop Download",
         "log_source": "Log Source",
         "auto_refresh": "Auto Refresh",
+        "runtime_status": "Runtime Status",
+        "connection": "Connection",
+        "configuration": "Configuration",
+        "current_language": "UI Language",
+        "online": "Online",
+        "offline": "Offline",
+        "loaded": "Loaded",
+        "not_loaded": "Not loaded",
+        "preview_section": "Speech Preview",
+        "preview_controls": "Synthesis",
+        "voice_identity": "Voice Identity",
+        "reference_section": "Reference Audio",
+        "clone_defaults": "Defaults",
+        "save_success": "Saved",
+        "reference_audio": "Reference audio",
+        "download_frontend": "Frontend",
+        "log_viewer": "Log Viewer",
+        "default_preview_text": "Hello, this is a Neiroha CosyVoice3 voice cloning test.",
     },
 }
 
@@ -177,6 +263,12 @@ def _language(registry: VoiceRegistry) -> str:
     return configured if configured in TEXT else "zh"
 
 
+def _ui_title(registry: VoiceRegistry, text: dict[str, str]) -> str:
+    ui_config = registry.server_config().get("ui", {})
+    configured = ui_config.get("title", "") if isinstance(ui_config, dict) else ""
+    return first_non_empty(configured, text["title"])
+
+
 def _api_get(api_base: str, path: str) -> dict[str, Any]:
     response = requests.get(f"{api_base.rstrip('/')}{path}", timeout=5)
     response.raise_for_status()
@@ -191,34 +283,38 @@ def _voices(registry: VoiceRegistry, voice_set_id: str) -> list[str]:
     return [profile.id for profile in registry.list_profiles(voice_set_id)]
 
 
-def _format_status(api_base: str, admin_url: str, registry: VoiceRegistry) -> str:
+def _format_status(api_base: str, admin_url: str, registry: VoiceRegistry, text: dict[str, str], language: str) -> str:
     try:
         health = _api_get(api_base, "/health")
-        api_state = "online"
+        api_state = text["online"]
         loaded = health.get("model_loaded")
         device = health.get("device", "")
         sample_rate = health.get("sample_rate", "")
     except Exception as exc:
-        api_state = f"offline ({exc})"
+        api_state = f"{text['offline']} ({exc})"
         loaded = False
         device = ""
         sample_rate = ""
     profiles = registry.list_profiles(registry.active_voice_set_id())
-    lines = [
-        f"API: {api_state}",
-        f"API URL: {api_base}",
-        f"Admin URL: {admin_url}",
-        f"Server config: {profile_path_text(SERVER_CONFIG_PATH)}",
-        f"Active model preset: {registry.active_model_preset_id()}",
-        f"Active voice set: {registry.active_voice_set_id()}",
-        f"Default voice: {registry.default_voice_id()}",
-        f"Model loaded: {loaded}",
-        f"Sample rate: {sample_rate}",
-        f"Device: {device}",
-        f"Voice count: {len(profiles)}",
-        f"PID: {os.getpid()}",
+    loaded_text = text["loaded"] if loaded else text["not_loaded"]
+    rows = [
+        ("API", api_state),
+        ("API URL", api_base),
+        ("Admin URL", admin_url),
+        (text["current_language"], language),
+        ("Server config", profile_path_text(SERVER_CONFIG_PATH)),
+        ("Model preset", registry.active_model_preset_id()),
+        ("Voice set", registry.active_voice_set_id()),
+        ("Default voice", registry.default_voice_id()),
+        ("Model", loaded_text),
+        ("Sample rate", sample_rate),
+        ("Device", device),
+        ("Voices", len(profiles)),
+        ("PID", os.getpid()),
     ]
-    return "\n".join(lines)
+    table = ["| Key | Value |", "| --- | --- |"]
+    table.extend(f"| {key} | {value} |" for key, value in rows)
+    return "\n".join(table)
 
 
 def _format_voice_sets(registry: VoiceRegistry) -> str:
@@ -246,6 +342,7 @@ def build_gradio_admin_blocks(
     registry = registry or VoiceRegistry()
     lang = _language(registry)
     text = TEXT[lang]
+    ui_title = _ui_title(registry, text)
 
     def t(key: str) -> str:
         return text.get(key, key)
@@ -256,7 +353,7 @@ def build_gradio_admin_blocks(
     model_preset_ids = [preset.id for preset in registry.list_model_presets()]
 
     def refresh_home() -> str:
-        return _format_status(api_base, admin_url, registry)
+        return _format_status(api_base, admin_url, registry, text, lang)
 
     def refresh_voice_dropdown(voice_set_id: str):
         voices = _voices(registry, voice_set_id)
@@ -327,7 +424,7 @@ def build_gradio_admin_blocks(
             )
             voice_sets = _voice_sets(registry)
             voices = _voices(registry, voice_set_id)
-            status = f"Saved voice: {profile.id}\nReference audio: {profile_path_text(profile.prompt_audio_path)}"
+            status = f"{t('save_success')}: {profile.id}\n{t('reference_audio')}: {profile_path_text(profile.prompt_audio_path)}"
             return (
                 status,
                 _format_voice_sets(registry),
@@ -340,26 +437,43 @@ def build_gradio_admin_blocks(
     def read_selected_log(name: str) -> str:
         return read_log_file(LOG_FILES.get(name, LOG_FILES["backend.log"]), limit=220, newest_first=True)
 
-    with gr.Blocks(title=t("title")) as blocks:
+    with gr.Blocks(
+        title=ui_title,
+        theme=gr.themes.Soft(primary_hue="blue", neutral_hue="slate"),
+        css=ADMIN_CSS,
+    ) as blocks:
+        gr.Markdown(
+            f"# {ui_title}\n<span class='neiroha-muted'>{t('subtitle')}</span>",
+            elem_classes=["neiroha-header"],
+        )
         with gr.Tab(t("home")):
-            status_box = gr.Textbox(value=refresh_home(), label=t("status"), lines=14)
-            refresh_btn = gr.Button(t("refresh"))
+            status_box = gr.Markdown(
+                value=refresh_home(),
+                label=t("runtime_status"),
+                elem_classes=["neiroha-status"],
+            )
+            refresh_btn = gr.Button(t("refresh"), variant="secondary")
             refresh_btn.click(refresh_home, outputs=status_box)
             home_timer = gr.Timer(value=2.0, active=True)
             home_timer.tick(refresh_home, outputs=status_box)
 
         with gr.Tab(t("trial")):
             with gr.Row():
-                model_dropdown = gr.Dropdown(choices=_voice_sets(registry), value=initial_voice_set, label=t("model"))
-                voice_dropdown = gr.Dropdown(choices=initial_voices, value=initial_voice, label=t("voice"))
-                refresh_choices_btn = gr.Button(t("refresh"))
-            trial_text = gr.Textbox(value="你好，这是 Neiroha CosyVoice3 的语音复刻测试。", label=t("text"), lines=3)
-            with gr.Row():
-                format_dropdown = gr.Dropdown(choices=["wav", "mp3", "flac", "aac", "opus", "ogg", "pcm", "raw"], value="wav", label=t("format"))
-                speed_slider = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label=t("speed"))
-                synth_btn = gr.Button(t("generate"))
-            audio_output = gr.Audio(type="filepath", label=t("audio_output"))
-            metrics_box = gr.Code(label=t("metrics"), language="json")
+                with gr.Column(scale=2, elem_classes=["neiroha-section"]):
+                    gr.Markdown(f"### {t('preview_section')}")
+                    trial_text = gr.Textbox(value=t("default_preview_text"), label=t("text"), lines=5)
+                    with gr.Row():
+                        model_dropdown = gr.Dropdown(choices=_voice_sets(registry), value=initial_voice_set, label=t("model"))
+                        voice_dropdown = gr.Dropdown(choices=initial_voices, value=initial_voice, label=t("voice"))
+                        refresh_choices_btn = gr.Button(t("refresh"), variant="secondary")
+                    with gr.Row():
+                        format_dropdown = gr.Dropdown(choices=["wav", "mp3", "flac", "aac", "opus", "ogg", "pcm", "raw"], value="wav", label=t("format"))
+                        speed_slider = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label=t("speed"))
+                        synth_btn = gr.Button(t("generate"), variant="primary")
+                with gr.Column(scale=1, elem_classes=["neiroha-section"]):
+                    gr.Markdown(f"### {t('metrics')}")
+                    audio_output = gr.Audio(type="filepath", label=t("audio_output"), autoplay=False)
+                    metrics_box = gr.Code(label=t("metrics"), language="json", lines=8)
             model_dropdown.change(refresh_voice_dropdown, inputs=model_dropdown, outputs=voice_dropdown)
             refresh_choices_btn.click(refresh_choices, outputs=[model_dropdown, voice_dropdown])
             synth_btn.click(
@@ -370,23 +484,27 @@ def build_gradio_admin_blocks(
 
         with gr.Tab(t("voice_config")):
             with gr.Row():
-                clone_voice_set = gr.Dropdown(choices=_voice_sets(registry), value=initial_voice_set, label=t("save_to_voice_set"))
-                clone_model_preset = gr.Dropdown(choices=model_preset_ids, value=model_preset_ids[0] if model_preset_ids else "", label=t("model_preset"))
-                clone_mode = gr.Dropdown(choices=["prompt_clone", "cross_lingual", "instruct"], value="prompt_clone", label=t("mode"))
-            with gr.Row():
-                clone_voice_id = gr.Textbox(value="local-voice", label=t("voice_id"))
-                clone_voice_name = gr.Textbox(value="Local Voice", label=t("name"))
-            clone_ref_file = gr.Audio(type="filepath", label=t("upload_reference"))
-            clone_ref_path = gr.Textbox(label=t("reference_path"))
-            clone_prompt_text = gr.Textbox(label=t("prompt_text"), lines=2)
-            clone_instruction = gr.Textbox(label=t("instruction"), lines=2)
-            with gr.Row():
-                clone_prompt_lang = gr.Textbox(value="zh", label=t("prompt_lang"))
-                clone_text_lang = gr.Textbox(value="zh", label=t("text_lang"))
-                clone_speed = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label=t("speed"))
-            save_voice_btn = gr.Button(t("save_voice"))
-            save_voice_status = gr.Textbox(label=t("save_result"), lines=3)
-            voice_sets_box = gr.Markdown(value=_format_voice_sets(registry))
+                with gr.Column(scale=1):
+                    gr.Markdown(f"### {t('voice_identity')}")
+                    clone_voice_set = gr.Dropdown(choices=_voice_sets(registry), value=initial_voice_set, label=t("save_to_voice_set"))
+                    clone_model_preset = gr.Dropdown(choices=model_preset_ids, value=model_preset_ids[0] if model_preset_ids else "", label=t("model_preset"))
+                    clone_mode = gr.Dropdown(choices=["prompt_clone", "cross_lingual", "instruct"], value="prompt_clone", label=t("mode"))
+                    clone_voice_id = gr.Textbox(value="local-voice", label=t("voice_id"))
+                    clone_voice_name = gr.Textbox(value="Local Voice", label=t("name"))
+                with gr.Column(scale=1):
+                    gr.Markdown(f"### {t('reference_section')}")
+                    clone_ref_file = gr.Audio(type="filepath", label=t("upload_reference"))
+                    clone_ref_path = gr.Textbox(label=t("reference_path"))
+                    clone_prompt_text = gr.Textbox(label=t("prompt_text"), lines=2)
+                    clone_instruction = gr.Textbox(label=t("instruction"), lines=2)
+                with gr.Column(scale=1):
+                    gr.Markdown(f"### {t('clone_defaults')}")
+                    clone_prompt_lang = gr.Textbox(value="zh", label=t("prompt_lang"))
+                    clone_text_lang = gr.Textbox(value="zh", label=t("text_lang"))
+                    clone_speed = gr.Slider(0.5, 2.0, value=1.0, step=0.05, label=t("speed"))
+                    save_voice_btn = gr.Button(t("save_voice"), variant="primary")
+                    save_voice_status = gr.Textbox(label=t("save_result"), lines=4)
+            voice_sets_box = gr.Markdown(value=_format_voice_sets(registry), elem_classes=["neiroha-table"])
             save_voice_btn.click(
                 save_voice,
                 inputs=[
@@ -407,12 +525,12 @@ def build_gradio_admin_blocks(
             )
 
         with gr.Tab(t("voice_sets")):
-            voice_sets_markdown = gr.Markdown(value=_format_voice_sets(registry))
-            gr.Button(t("refresh")).click(lambda: _format_voice_sets(registry), outputs=voice_sets_markdown)
+            voice_sets_markdown = gr.Markdown(value=_format_voice_sets(registry), elem_classes=["neiroha-table"])
+            gr.Button(t("refresh"), variant="secondary").click(lambda: _format_voice_sets(registry), outputs=voice_sets_markdown)
 
         with gr.Tab(t("model_presets")):
-            presets_markdown = gr.Markdown(value=_format_model_presets(registry))
-            gr.Button(t("refresh")).click(lambda: _format_model_presets(registry), outputs=presets_markdown)
+            presets_markdown = gr.Markdown(value=_format_model_presets(registry), elem_classes=["neiroha-table"])
+            gr.Button(t("refresh"), variant="secondary").click(lambda: _format_model_presets(registry), outputs=presets_markdown)
 
         with gr.Tab(t("download")):
             with gr.Row():
@@ -432,11 +550,12 @@ def build_gradio_admin_blocks(
             download_refresh_btn.click(download_manager.status, outputs=download_status)
 
         with gr.Tab(t("logs")):
+            gr.Markdown(f"### {t('log_viewer')}")
             log_source = gr.Dropdown(choices=list(LOG_FILES), value="backend.log", label=t("log_source"))
             with gr.Row():
                 auto_refresh = gr.Checkbox(value=True, label=t("auto_refresh"))
-                log_refresh_btn = gr.Button(t("refresh"))
-            log_box = gr.Textbox(value=read_selected_log("backend.log"), label=t("logs"), lines=30)
+                log_refresh_btn = gr.Button(t("refresh"), variant="secondary")
+            log_box = gr.Textbox(value=read_selected_log("backend.log"), label=t("logs"), lines=30, elem_classes=["neiroha-log"])
             log_refresh_btn.click(read_selected_log, inputs=log_source, outputs=log_box)
             log_source.change(read_selected_log, inputs=log_source, outputs=log_box)
             log_timer = gr.Timer(value=2.0, active=True)

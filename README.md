@@ -15,10 +15,14 @@ pixi run clone-smoke
 pixi run api-admin
 ```
 
-`pixi run api-admin` reads ports from `configs/server.toml`. Defaults are:
+Chinese documentation is available in [README_zh.md](README_zh.md).
+
+`pixi run api-admin` reads ports and preload behavior from `configs/server.toml`.
+Defaults are:
 
 - FastAPI: `http://127.0.0.1:19890`
 - Gradio Admin: `http://127.0.0.1:17870`
+- `preload_model = true`
 
 If a configured port is unavailable, the launcher picks a random bindable port
 and records the actual URL in `runtime/logs/backend.log` and `/health`.
