@@ -1,6 +1,6 @@
 # Neiroha CosyVoice3 API
 
-Default FastAPI base URL: `http://127.0.0.1:19890`.
+Default FastAPI base URL: `http://127.0.0.1:9880`.
 
 ## OpenAI Compatible
 

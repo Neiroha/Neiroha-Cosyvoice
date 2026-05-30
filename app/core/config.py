@@ -30,6 +30,10 @@ DEFAULT_PROFILE_PATH = WORKSPACE_ROOT / "profiles" / "voices.json"
 DEFAULT_MODEL_PRESET_ID = "cosyvoice3-default"
 DEFAULT_VOICE_SET_ID = "default"
 DEFAULT_VOICE_ID = "prompt-clone"
+DEFAULT_API_HOST = "127.0.0.1"
+DEFAULT_API_PORT = 9880
+DEFAULT_ADMIN_HOST = "127.0.0.1"
+DEFAULT_ADMIN_PORT = 7880
 
 
 def prepare_runtime_environment() -> None:

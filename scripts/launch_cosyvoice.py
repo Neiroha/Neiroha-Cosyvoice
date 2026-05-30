@@ -17,7 +17,13 @@ if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
 from app.api.main import create_api_app
-from app.core.config import DEFAULT_PROFILE_PATH, DEFAULT_REPO_DIR, prepare_runtime_environment
+from app.core.config import (
+    DEFAULT_ADMIN_PORT,
+    DEFAULT_API_PORT,
+    DEFAULT_PROFILE_PATH,
+    DEFAULT_REPO_DIR,
+    prepare_runtime_environment,
+)
 from app.core.profiles import VoiceRegistry, first_non_empty, strip_text
 from app.core.runtime_logs import (
     ADMIN_STDERR_LOG_PATH,
@@ -275,8 +281,8 @@ def main() -> None:
         admin_config.get("host"),
         "127.0.0.1",
     )
-    requested_api_port = int(args.api_port or (args.port if effective_mode == "api" else 0) or api_config.get("port") or 19890)
-    requested_admin_port = int(args.admin_port or (args.port if effective_mode == "admin" else 0) or admin_config.get("port") or 17870)
+    requested_api_port = int(args.api_port or (args.port if effective_mode == "api" else 0) or api_config.get("port") or DEFAULT_API_PORT)
+    requested_admin_port = int(args.admin_port or (args.port if effective_mode == "admin" else 0) or admin_config.get("port") or DEFAULT_ADMIN_PORT)
     api_port = resolve_bind_port(api_host, requested_api_port, "FastAPI") if starts_api else requested_api_port
     admin_port = resolve_bind_port(admin_host, requested_admin_port, "Gradio Admin") if starts_admin else requested_admin_port
     api_url = args.api_base or http_url(api_host, api_port)

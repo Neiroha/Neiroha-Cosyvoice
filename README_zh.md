@@ -70,7 +70,7 @@ pixi run install-ttsfrd
 ## 启动
 
 ```powershell
-start_api_admin.bat
+start_portable.bat
 ```
 
 或使用 Pixi task：
@@ -88,8 +88,8 @@ pixi run smoke
 默认端口来自 `configs/server.toml`：
 
 ```text
-FastAPI  http://127.0.0.1:19890
-Admin    http://127.0.0.1:17870
+FastAPI  http://127.0.0.1:9880
+Admin    http://127.0.0.1:7880
 ```
 
 默认启动会预加载模型：
@@ -137,19 +137,19 @@ $env:NEIROHA_COSYVOICE3_UI_LANG="en"
 列出 voice set：
 
 ```powershell
-curl.exe http://127.0.0.1:19890/v1/models
+curl.exe http://127.0.0.1:9880/v1/models
 ```
 
 列出 voice：
 
 ```powershell
-curl.exe http://127.0.0.1:19890/v1/audio/voices
+curl.exe http://127.0.0.1:9880/v1/audio/voices
 ```
 
 语音合成：
 
 ```powershell
-curl.exe http://127.0.0.1:19890/v1/audio/speech `
+curl.exe http://127.0.0.1:9880/v1/audio/speech `
   -H "Content-Type: application/json" `
   -d '{ "model":"default", "voice":"prompt-clone", "input":"你好，这是一次 CosyVoice3 语音复刻测试。", "response_format":"wav" }' `
   --output speech.wav

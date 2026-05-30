@@ -11,15 +11,15 @@ WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from app.core.config import OUTPUT_ROOT
+from app.core.config import DEFAULT_API_HOST, DEFAULT_API_PORT, OUTPUT_ROOT
 from app.core.profiles import VoiceRegistry
 
 
 def parse_args() -> argparse.Namespace:
     registry = VoiceRegistry()
     api_config = registry.server_config().get("api", {})
-    host = api_config.get("host", "127.0.0.1") if isinstance(api_config, dict) else "127.0.0.1"
-    port = api_config.get("port", 19890) if isinstance(api_config, dict) else 19890
+    host = api_config.get("host", DEFAULT_API_HOST) if isinstance(api_config, dict) else DEFAULT_API_HOST
+    port = api_config.get("port", DEFAULT_API_PORT) if isinstance(api_config, dict) else DEFAULT_API_PORT
     parser = argparse.ArgumentParser(description="Smoke test a running Neiroha CosyVoice API.")
     parser.add_argument("--base-url", default=f"http://{host}:{int(port)}")
     parser.add_argument("--api-key", default="")
@@ -71,7 +71,7 @@ def main() -> None:
         json={
             "model": model_id,
             "voice": voice_id,
-            "input": "Hello, this is a Neiroha CosyVoice API smoke test.",
+            "input": "你好，这是Neiroha CosyVoice三的语音克隆测试。",
             "response_format": "wav",
         },
         timeout=180,

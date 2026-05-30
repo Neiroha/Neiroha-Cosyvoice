@@ -20,8 +20,8 @@ Chinese documentation is available in [README_zh.md](README_zh.md).
 `pixi run serve` reads surface, ports, and preload behavior from `configs/server.toml`.
 Defaults are:
 
-- FastAPI: `http://127.0.0.1:19890`
-- Gradio Admin: `http://127.0.0.1:17870`
+- FastAPI: `http://127.0.0.1:9880`
+- Gradio Admin: `http://127.0.0.1:7880`
 - startup surface: `both`
 - preload model: `true`
 

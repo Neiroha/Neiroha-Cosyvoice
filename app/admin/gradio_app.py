@@ -11,7 +11,15 @@ from typing import Any
 
 import requests
 
-from app.core.config import OUTPUT_ROOT, SERVER_CONFIG_PATH, WORKSPACE_ROOT
+from app.core.config import (
+    DEFAULT_ADMIN_HOST,
+    DEFAULT_ADMIN_PORT,
+    DEFAULT_API_HOST,
+    DEFAULT_API_PORT,
+    OUTPUT_ROOT,
+    SERVER_CONFIG_PATH,
+    WORKSPACE_ROOT,
+)
 from app.core.profiles import VoiceRegistry, first_non_empty, profile_path_text
 from app.core.runtime_logs import (
     ADMIN_STDERR_LOG_PATH,
@@ -386,8 +394,8 @@ def _format_settings(api_base: str, admin_url: str, registry: VoiceRegistry) -> 
     rows = [
         ("API URL", api_base),
         ("Admin URL", admin_url),
-        ("API bind", f"{api_config.get('host', '127.0.0.1')}:{api_config.get('port', 19890)}"),
-        ("Admin bind", f"{admin_config.get('host', '127.0.0.1')}:{admin_config.get('port', 17870)}"),
+        ("API bind", f"{api_config.get('host', DEFAULT_API_HOST)}:{api_config.get('port', DEFAULT_API_PORT)}"),
+        ("Admin bind", f"{admin_config.get('host', DEFAULT_ADMIN_HOST)}:{admin_config.get('port', DEFAULT_ADMIN_PORT)}"),
         ("Startup surface", startup_config.get("surface", "both")),
         ("Preload model", startup_config.get("preload_model", False)),
         ("Default model preset", startup_config.get("default_model_preset", registry.active_model_preset_id())),
@@ -682,10 +690,10 @@ def build_gradio_blocks(runtime: Any = None, registry: VoiceRegistry | None = No
     server_config = registry.server_config()
     api_config = server_config.get("api", {}) if isinstance(server_config.get("api"), dict) else {}
     admin_config = server_config.get("admin", {}) if isinstance(server_config.get("admin"), dict) else {}
-    api_host = api_config.get("host", "127.0.0.1")
-    api_port = int(api_config.get("port", 19890))
-    admin_host = admin_config.get("host", "127.0.0.1")
-    admin_port = int(admin_config.get("port", 17870))
+    api_host = api_config.get("host", DEFAULT_API_HOST)
+    api_port = int(api_config.get("port", DEFAULT_API_PORT))
+    admin_host = admin_config.get("host", DEFAULT_ADMIN_HOST)
+    admin_port = int(admin_config.get("port", DEFAULT_ADMIN_PORT))
     api_base = os.environ.get("NEIROHA_COSYVOICE3_API_BASE", f"http://{api_host}:{api_port}")
     admin_url = os.environ.get("NEIROHA_COSYVOICE3_ADMIN_URL", f"http://{admin_host}:{admin_port}")
     return build_gradio_admin_blocks(api_base=api_base, admin_url=admin_url, registry=registry)

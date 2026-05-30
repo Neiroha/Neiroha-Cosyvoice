@@ -83,7 +83,7 @@ class ProfileTests(unittest.TestCase):
 
     def test_openai_models_voices_and_logs(self) -> None:
         registry = VoiceRegistry()
-        app = create_api_app(DummyRuntime(), registry, api_url="http://127.0.0.1:19890", admin_url="http://127.0.0.1:17870")
+        app = create_api_app(DummyRuntime(), registry, api_url="http://127.0.0.1:9880", admin_url="http://127.0.0.1:7880")
         client = TestClient(app)
         models = client.get("/v1/models")
         self.assertEqual(models.status_code, 200)
@@ -102,7 +102,7 @@ class ProfileTests(unittest.TestCase):
 
     def test_flutter_adapter_contract_routes(self) -> None:
         registry = VoiceRegistry()
-        app = create_api_app(DummyRuntime(), registry, api_url="http://127.0.0.1:19890", admin_url="http://127.0.0.1:17870")
+        app = create_api_app(DummyRuntime(), registry, api_url="http://127.0.0.1:9880", admin_url="http://127.0.0.1:7880")
         client = TestClient(app)
 
         health = client.get("/health")
@@ -180,8 +180,8 @@ class ProfileTests(unittest.TestCase):
             write_toml_mapping(
                 config_root / "server.toml",
                 {
-                    "api": {"host": "127.0.0.1", "port": 19890, "preload_model": False},
-                    "admin": {"enabled": True, "host": "127.0.0.1", "port": 17870},
+                    "api": {"host": "127.0.0.1", "port": 9880, "preload_model": False},
+                    "admin": {"enabled": True, "host": "127.0.0.1", "port": 7880},
                     "ui": {"title": "Test", "default_language": "zh"},
                     "runtime": {
                         "active_model_preset": "cosyvoice3-default",
@@ -258,7 +258,7 @@ class ProfileTests(unittest.TestCase):
                 os.environ["NEIROHA_COSYVOICE3_UI_LANG"] = language
                 blocks = build_gradio_admin_blocks(
                     api_base="http://127.0.0.1:9",
-                    admin_url="http://127.0.0.1:17870",
+                    admin_url="http://127.0.0.1:7880",
                     registry=registry,
                 )
                 self.assertEqual(blocks.__class__.__name__, "Blocks")

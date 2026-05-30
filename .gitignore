@@ -1,4 +1,5 @@
 .pixi/
+.codex-temp/
 __pycache__/
 *.py[cod]
 *.pyo

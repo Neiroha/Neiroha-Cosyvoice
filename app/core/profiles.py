@@ -10,6 +10,10 @@ from typing import Any
 
 from app.core.config import (
     CONFIG_ROOT,
+    DEFAULT_ADMIN_HOST,
+    DEFAULT_ADMIN_PORT,
+    DEFAULT_API_HOST,
+    DEFAULT_API_PORT,
     DEFAULT_MODEL_DIR,
     DEFAULT_MODEL_PRESET_ID,
     DEFAULT_PROFILE_PATH,
@@ -416,8 +420,8 @@ class VoiceRegistry:
         if self.server_config_path.exists():
             return read_toml(self.server_config_path)
         return {
-            "api": {"host": "127.0.0.1", "port": 19890},
-            "admin": {"enabled": True, "host": "127.0.0.1", "port": 17870, "share": False},
+            "api": {"host": DEFAULT_API_HOST, "port": DEFAULT_API_PORT},
+            "admin": {"enabled": True, "host": DEFAULT_ADMIN_HOST, "port": DEFAULT_ADMIN_PORT, "share": False},
             "startup": {
                 "surface": "both",
                 "preload_model": False,

@@ -1,6 +1,6 @@
 # Neiroha CosyVoice3 API
 
-默认 FastAPI 地址：`http://127.0.0.1:19890`。
+默认 FastAPI 地址：`http://127.0.0.1:9880`。
 
 ## OpenAI 兼容路由
 
