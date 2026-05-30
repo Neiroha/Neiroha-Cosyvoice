@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import urllib.parse
 import unittest
 from pathlib import Path
 
@@ -30,6 +31,9 @@ class DummyRuntime:
             rtf=0.1,
             mode=request.mode,
             voice_name=request.voice_name,
+            voice_set=request.voice_set,
+            model_preset=request.model_preset,
+            voice_id=request.voice_id,
         )
 
 
@@ -90,6 +94,81 @@ class ProfileTests(unittest.TestCase):
         logs = client.get("/cosyvoice3/logs")
         self.assertEqual(logs.status_code, 200)
         self.assertEqual(logs.json()["name"], "backend.log")
+        native_meta = client.get("/api/cosyvoice/meta")
+        self.assertEqual(native_meta.status_code, 200)
+        self.assertEqual(native_meta.json()["paths"]["native_json"], "/api/cosyvoice/tts")
+        native_voices = client.get("/api/cosyvoice/voices")
+        self.assertEqual(native_voices.status_code, 200)
+
+    def test_flutter_adapter_contract_routes(self) -> None:
+        registry = VoiceRegistry()
+        app = create_api_app(DummyRuntime(), registry, api_url="http://127.0.0.1:19890", admin_url="http://127.0.0.1:17870")
+        client = TestClient(app)
+
+        health = client.get("/health")
+        self.assertEqual(health.status_code, 200)
+        self.assertEqual(health.json()["backend"], "cosyvoice3")
+
+        speakers = client.get("/speakers")
+        self.assertEqual(speakers.status_code, 200)
+        self.assertIsInstance(speakers.json(), list)
+        self.assertIn("name", speakers.json()[0])
+        self.assertIn("voice_id", speakers.json()[0])
+        self.assertIn("mode", speakers.json()[0])
+
+        profiles = client.get("/cosyvoice/profiles")
+        self.assertEqual(profiles.status_code, 200)
+        first_profile = profiles.json()["data"][0]
+        self.assertIn("id", first_profile)
+        self.assertIn("name", first_profile)
+        self.assertIn("mode", first_profile)
+        self.assertIn("mode_label", first_profile)
+
+        native_speech = client.post(
+            "/cosyvoice/speech",
+            json={
+                "text": "你好",
+                "mode": "zero_shot",
+                "profile": "prompt-clone",
+                "speed": 1.0,
+                "response_format": "wav",
+                "prompt_lang": "zh",
+            },
+        )
+        self.assertEqual(native_speech.status_code, 200, native_speech.text)
+        self.assertEqual(native_speech.headers["content-type"], "audio/wav")
+
+        openai_root_speech = client.post(
+            "/audio/speech",
+            json={
+                "model": "default",
+                "voice": "prompt-clone",
+                "input": "你好",
+                "response_format": "wav",
+            },
+        )
+        self.assertEqual(openai_root_speech.status_code, 200, openai_root_speech.text)
+        self.assertEqual(openai_root_speech.headers["content-type"], "audio/wav")
+
+    def test_flutter_adapter_upload_contract_route(self) -> None:
+        registry = VoiceRegistry()
+        app = create_api_app(DummyRuntime(), registry)
+        client = TestClient(app)
+
+        response = client.post(
+            "/cosyvoice/speech/upload",
+            data={
+                "text": "你好",
+                "mode": "zero_shot",
+                "speed": "1.0",
+                "response_format": "wav",
+                "prompt_text": "参考文本",
+                "prompt_lang": "zh",
+            },
+            files={"prompt_audio": ("ref.wav", b"placeholder audio", "audio/wav")},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["content-type"], "audio/wav")
 
     def test_chinese_voice_id_uses_header_safe_output_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -156,9 +235,20 @@ class ProfileTests(unittest.TestCase):
                 json={"model": "default", "voice": "中文声音", "input": "你好", "response_format": "wav"},
             )
             self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.headers["X-Neiroha-Backend"], "cosyvoice3")
+            self.assertEqual(response.headers["X-Neiroha-Model-Preset"], "cosyvoice3-default")
+            self.assertEqual(response.headers["X-Neiroha-Voice"], urllib.parse.quote("中文声音", safe=""))
+            self.assertEqual(response.headers["X-Neiroha-Sample-Rate"], "16000")
+            self.assertEqual(response.headers["X-Neiroha-Output-Format"], "wav")
             response.headers["Content-Disposition"].encode("latin-1")
             response.headers["X-Neiroha-Output-Path"].encode("latin-1")
             self.assertIn("runtime/outputs/", response.headers["X-Neiroha-Output-Path"])
+            unsupported = client.post(
+                "/v1/audio/speech",
+                json={"model": "default", "voice": "中文声音", "input": "你好", "response_format": "bad"},
+            )
+            self.assertEqual(unsupported.status_code, 400)
+            self.assertEqual(unsupported.json()["error"]["code"], "unsupported_format")
 
     def test_gradio_admin_blocks_build_in_zh_and_en(self) -> None:
         registry = VoiceRegistry()

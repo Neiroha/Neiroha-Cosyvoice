@@ -56,6 +56,12 @@ Default FastAPI base URL: `http://127.0.0.1:19890`.
 Response headers:
 
 ```text
+X-Neiroha-Backend
+X-Neiroha-Model-Preset
+X-Neiroha-Voice
+X-Neiroha-Sample-Rate
+X-Neiroha-Inference-Ms
+X-Neiroha-Output-Format
 X-Neiroha-Output-Path
 X-Neiroha-Audio-Seconds
 X-Neiroha-Elapsed-Seconds
@@ -70,6 +76,15 @@ Starlette response headers.
 
 - `GET /health`
 - `GET /speakers`
+- `GET /api/cosyvoice/voices`
+- `GET /api/cosyvoice/meta`
+- `GET /api/cosyvoice/capabilities`
+- `GET /api/cosyvoice/logs`
+- `POST /api/cosyvoice/tts`
+- `POST /api/cosyvoice/tts/upload`
+
+Legacy aliases remain available:
+
 - `GET /cosyvoice/profiles`
 - `GET /cosyvoice/meta`
 - `GET /cosyvoice3/capabilities`
@@ -77,7 +92,7 @@ Starlette response headers.
 - `POST /cosyvoice/speech`
 - `POST /cosyvoice/speech/upload`
 
-`POST /cosyvoice/speech` JSON body:
+`POST /api/cosyvoice/tts` JSON body:
 
 ```json
 {
@@ -98,8 +113,28 @@ Supported CosyVoice3 clone modes:
 - `cross_lingual`: requires `prompt_audio_path` or profile reference audio.
 - `instruct`: requires `prompt_audio_path` or profile reference audio, plus `instruct_text` / `instruction`.
 
-`POST /cosyvoice/speech/upload` uses `multipart/form-data` with the same text
+`POST /api/cosyvoice/tts/upload` uses `multipart/form-data` with the same text
 fields plus `prompt_audio` as the uploaded reference audio file.
+
+## Error Shape
+
+Errors return a stable JSON object:
+
+```json
+{
+  "error": {
+    "code": "unsupported_format",
+    "message": "Unsupported response_format: bad",
+    "details": {},
+    "type": "invalid_request_error",
+    "param": null
+  }
+}
+```
+
+Common codes include `voice_not_found`, `model_preset_not_found`,
+`model_not_loaded`, `unsupported_format`, `invalid_reference_audio`,
+`inference_failed`, `engine_unavailable`, and `auth_required`.
 
 ## Local Model Policy
 

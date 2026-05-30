@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from app.api.common import (
     audio_response,
     build_synthesis_input,
+    classify_error_code,
     openai_error,
     payload_prompt_audio,
     payload_response_format,
@@ -72,10 +73,10 @@ def openai_speech(
         result = runtime.synthesize(synthesis_input)
         return audio_response(result, payload_response_format(payload))
     except FileNotFoundError as exc:
-        return openai_error(str(exc), status_code=404)
+        return openai_error(str(exc), status_code=404, code="invalid_reference_audio")
     except ValueError as exc:
         message = str(exc)
         status = 404 if message.startswith("未找到角色") else 400
-        return openai_error(message, status_code=status)
+        return openai_error(message, status_code=status, code=classify_error_code(message))
     except Exception as exc:
-        return openai_error(str(exc), status_code=500, error_type="server_error")
+        return openai_error(str(exc), status_code=500, error_type="server_error", code="inference_failed")

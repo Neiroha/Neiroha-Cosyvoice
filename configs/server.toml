@@ -1,12 +1,20 @@
 [api]
 host = "127.0.0.1"
-port = 19890
-preload_model = true
+port = 9880
 
 [admin]
 enabled = true
 host = "127.0.0.1"
-port = 17870
+port = 7880
+share = false
+
+[startup]
+surface = "both"
+preload_model = true
+default_model_preset = "cosyvoice3-default"
+
+[security]
+api_key = ""
 
 [ui]
 title = "Neiroha CosyVoice3 Admin"

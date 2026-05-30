@@ -77,11 +77,13 @@ start_api_admin.bat
 
 ```powershell
 pixi run api
-pixi run api-preload
 pixi run admin
-pixi run api-admin
-pixi run api-admin-preload
+pixi run serve
+pixi run smoke
 ```
+
+`pixi run smoke` 需要 API 已经启动；它会检查 `/health`、`/v1/models`、
+`/v1/audio/voices` 和 `/v1/audio/speech`。
 
 默认端口来自 `configs/server.toml`：
 
@@ -93,9 +95,14 @@ Admin    http://127.0.0.1:17870
 默认启动会预加载模型：
 
 ```toml
-[api]
+[startup]
+surface = "both"
 preload_model = true
+default_model_preset = "cosyvoice3-default"
 ```
+
+启动界面和预加载行为都优先通过 `configs/server.toml` 的 `[startup]` 配置，
+不要为 preload 再增加新的 Pixi task。
 
 端口被占用时，launcher 会自动挑一个可用随机端口，并在终端、
 `runtime/logs/backend.log` 和 `/health` 里写出实际地址。
@@ -116,6 +123,16 @@ $env:NEIROHA_COSYVOICE3_UI_LANG="en"
 ```
 
 ## API 示例
+
+主要路由：
+
+- `GET /v1/models`
+- `GET /v1/audio/voices`
+- `POST /v1/audio/speech`
+- `GET /api/cosyvoice/voices`
+- `GET /api/cosyvoice/meta`
+- `POST /api/cosyvoice/tts`
+- `POST /api/cosyvoice/tts/upload`
 
 列出 voice set：
 
@@ -183,3 +200,5 @@ speaker_id = ""
 speaker_embedding_path = ""
 adapter_path = ""
 ```
+
+更多 API 和模型来源说明见 `docs/api.md`、`docs/api_zh.md`、`docs/model-sources.md`。

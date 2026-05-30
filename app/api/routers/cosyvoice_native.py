@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 
 from app.api.common import (
     audio_response,
     build_synthesis_input,
+    classify_error_code,
     cleanup_temp_file,
-    json_response,
+    openai_error,
     payload_response_format,
     save_uploaded_audio,
 )
@@ -28,6 +29,8 @@ def _speaker_items(registry: VoiceRegistry) -> list[dict[str, object]]:
     return [profile.to_speaker_item() for profile in registry.list_profiles()]
 
 
+@router.get("/api/cosyvoice/voices", summary="List registered CosyVoice voices")
+@router.get("/api/cosyvoice/profiles", include_in_schema=False)
 @router.get("/cosyvoice/profiles", summary="List registered CosyVoice profiles")
 @router.get("/cosyvoice3/profiles", include_in_schema=False)
 def cosyvoice_profiles(registry: VoiceRegistry = Depends(get_voice_registry)):
@@ -38,7 +41,9 @@ def cosyvoice_profiles(registry: VoiceRegistry = Depends(get_voice_registry)):
     }
 
 
-@router.get("/cosyvoice/meta", summary="Describe native CosyVoice capabilities")
+@router.get("/api/cosyvoice/meta", summary="Describe native CosyVoice capabilities")
+@router.get("/api/cosyvoice/capabilities", include_in_schema=False)
+@router.get("/cosyvoice/meta", include_in_schema=False)
 @router.get("/cosyvoice3/meta", include_in_schema=False)
 @router.get("/cosyvoice3/capabilities", include_in_schema=False)
 def cosyvoice_meta(
@@ -61,11 +66,12 @@ def cosyvoice_meta(
         },
         "paths": {
             "health": "/health",
-            "native_json": "/cosyvoice/speech",
-            "native_upload": "/cosyvoice/speech/upload",
-            "profiles": "/cosyvoice/profiles",
-            "capabilities": "/cosyvoice3/capabilities",
-            "logs": "/cosyvoice3/logs",
+            "native_json": "/api/cosyvoice/tts",
+            "native_upload": "/api/cosyvoice/tts/upload",
+            "profiles": "/api/cosyvoice/profiles",
+            "voices": "/api/cosyvoice/voices",
+            "capabilities": "/api/cosyvoice/capabilities",
+            "logs": "/api/cosyvoice/logs",
             "speakers": "/speakers",
             "openai_models": "/v1/models",
             "openai_voices": "/v1/audio/voices",
@@ -121,14 +127,15 @@ def cosyvoice_meta(
     }
 
 
-@router.get("/cosyvoice3/logs", summary="Read CosyVoice3 runtime logs")
+@router.get("/api/cosyvoice/logs", summary="Read CosyVoice3 runtime logs")
+@router.get("/cosyvoice3/logs", include_in_schema=False)
 def cosyvoice_logs(
     name: str = Query("backend.log", description="backend.log, backend.previous.log, admin-ui.out.log, admin-ui.err.log, download.out.log, download.err.log"),
     limit: int = Query(160, ge=1, le=1000),
 ):
     path = LOG_FILES.get(name)
     if path is None:
-        raise HTTPException(status_code=404, detail=f"Unknown log file: {name}")
+        return openai_error(f"Unknown log file: {name}", status_code=404, code="invalid_request")
     return {
         "object": "log",
         "name": name,
@@ -144,7 +151,9 @@ def speakers(registry: VoiceRegistry = Depends(get_voice_registry)):
     return _speaker_items(registry)
 
 
-@router.post("/cosyvoice/speech", summary="Generate speech with native CosyVoice JSON API")
+@router.post("/api/cosyvoice/tts", summary="Generate speech with native CosyVoice JSON API")
+@router.post("/api/cosyvoice/speech", include_in_schema=False)
+@router.post("/cosyvoice/speech", include_in_schema=False)
 def cosyvoice_speech(
     payload: CosyVoiceSpeechRequest,
     runtime: CosyVoiceRuntime = Depends(get_runtime),
@@ -155,14 +164,17 @@ def cosyvoice_speech(
         result = runtime.synthesize(synthesis_input)
         return audio_response(result, payload_response_format(payload))
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return openai_error(str(exc), status_code=404, code="invalid_reference_audio")
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        message = str(exc)
+        return openai_error(message, status_code=400, code=classify_error_code(message))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return openai_error(str(exc), status_code=500, error_type="server_error", code="inference_failed")
 
 
-@router.post("/cosyvoice/speech/upload", summary="Generate speech with uploaded prompt audio")
+@router.post("/api/cosyvoice/tts/upload", summary="Generate speech with uploaded prompt audio")
+@router.post("/api/cosyvoice/speech/upload", include_in_schema=False)
+@router.post("/cosyvoice/speech/upload", include_in_schema=False)
 async def cosyvoice_speech_upload(
     text: str = Form(...),
     input: str | None = Form(None),
@@ -228,11 +240,12 @@ async def cosyvoice_speech_upload(
         result = runtime.synthesize(synthesis_input)
         return audio_response(result, payload_response_format(payload))
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return openai_error(str(exc), status_code=404, code="invalid_reference_audio")
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        message = str(exc)
+        return openai_error(message, status_code=400, code=classify_error_code(message))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        return openai_error(str(exc), status_code=500, error_type="server_error", code="inference_failed")
     finally:
         cleanup_temp_file(temp_prompt_audio)
 

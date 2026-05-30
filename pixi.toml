@@ -5,6 +5,22 @@ channels = ["conda-forge"]
 platforms = ["win-64"]
 requires-pixi = ">=0.61.0"
 
+
+[tasks]
+submodule-init = { cmd = "git submodule update --init --recursive" }
+install = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model cosyvoice3 --source modelscope" }
+install-frontend = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
+install-wetext = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
+install-ttsfrd = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model ttsfrd --source modelscope" }
+install-tokenizer = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
+clone-smoke = { cmd = "python ./scripts/smoke_test_clone.py" }
+api = { cmd = "python ./scripts/launch_engine.py --surface api" }
+admin = { cmd = "python ./scripts/launch_engine.py --surface admin" }
+serve = { cmd = "python ./scripts/launch_engine.py" }
+smoke = { cmd = "python ./scripts/smoke_test_api.py --speech" }
+launcher-help = { cmd = "python ./scripts/launch_engine.py --help" }
+test = { cmd = "python ./scripts/run_tests.py" }
+
 [system-requirements]
 cuda = "12.8"
 
@@ -58,22 +74,3 @@ x-transformers = ">=2.11,<3"
 torch = { url = "https://mirrors.aliyun.com/pytorch-wheels/cu128/torch-2.7.0%2Bcu128-cp312-cp312-win_amd64.whl" }
 torchaudio = { url = "https://mirrors.aliyun.com/pytorch-wheels/cu128/torchaudio-2.7.0%2Bcu128-cp312-cp312-win_amd64.whl" }
 torchvision = { url = "https://mirrors.aliyun.com/pytorch-wheels/cu128/torchvision-0.22.0%2Bcu128-cp312-cp312-win_amd64.whl" }
-
-[tasks]
-submodule-init = { cmd = "git submodule update --init --recursive" }
-install = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model cosyvoice3 --source modelscope" }
-install-frontend = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
-install-wetext = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
-install-ttsfrd = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model ttsfrd --source modelscope" }
-install-tokenizer = { cmd = "python ./scripts/download_cosyvoice3_assets.py --model wetext --source modelscope" }
-clone-smoke = { cmd = "python ./scripts/smoke_test_clone.py" }
-api = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api" }
-api-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-preload" }
-admin = { cmd = "python ./scripts/launch_cosyvoice3.py --mode admin" }
-api-admin = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin" }
-api-admin-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin-preload" }
-webui = { cmd = "python ./scripts/launch_cosyvoice3.py --mode admin" }
-combined = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin" }
-combined-preload = { cmd = "python ./scripts/launch_cosyvoice3.py --mode api-admin-preload" }
-launcher-help = { cmd = "python ./scripts/launch_cosyvoice3.py --help" }
-test = { cmd = "python -m unittest discover tests" }

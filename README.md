@@ -12,17 +12,18 @@ pixi install
 pixi run submodule-init
 pixi run install
 pixi run clone-smoke
-pixi run api-admin
+pixi run serve
 ```
 
 Chinese documentation is available in [README_zh.md](README_zh.md).
 
-`pixi run api-admin` reads ports and preload behavior from `configs/server.toml`.
+`pixi run serve` reads surface, ports, and preload behavior from `configs/server.toml`.
 Defaults are:
 
 - FastAPI: `http://127.0.0.1:19890`
 - Gradio Admin: `http://127.0.0.1:17870`
-- `preload_model = true`
+- startup surface: `both`
+- preload model: `true`
 
 If a configured port is unavailable, the launcher picks a random bindable port
 and records the actual URL in `runtime/logs/backend.log` and `/health`.
@@ -54,6 +55,18 @@ OpenAI-compatible `model` means voice set, not the underlying CosyVoice3
 checkpoint. The active checkpoint is selected by a model preset, and each
 voice profile can point at a preset through `model_preset`.
 
+Launch behavior is config-first:
+
+```toml
+[startup]
+surface = "both"       # api, admin, or both
+preload_model = true
+default_model_preset = "cosyvoice3-default"
+
+[security]
+api_key = ""
+```
+
 Default clone voice configs keep the three CosyVoice3 native clone paths:
 
 - `prompt_clone`: CosyVoice3 zero-shot clone with prompt text.
@@ -64,11 +77,16 @@ Default clone voice configs keep the three CosyVoice3 native clone paths:
 
 ```powershell
 pixi run api
-pixi run api-preload
 pixi run admin
-pixi run api-admin
-pixi run api-admin-preload
+pixi run serve
+pixi run smoke
 ```
+
+`pixi run smoke` expects the API to already be running and exercises
+`/health`, `/v1/models`, `/v1/audio/voices`, and `/v1/audio/speech`.
+
+Startup surface and preload behavior should be configured in
+`configs/server.toml` under `[startup]`, rather than by adding more Pixi tasks.
 
 Useful download tasks:
 
@@ -78,8 +96,8 @@ pixi run install-wetext
 pixi run install-ttsfrd
 ```
 
-`api-admin` starts FastAPI and an independent Gradio Admin process. Gradio is
-not mounted into FastAPI by default.
+When `[startup].surface = "both"`, `pixi run serve` starts FastAPI and an
+independent Gradio Admin process. Gradio is not mounted into FastAPI by default.
 
 ## API Surface
 
@@ -87,6 +105,14 @@ Neiroha CosyVoice native adapter:
 
 - `GET /health`
 - `GET /speakers`
+- `GET /api/cosyvoice/voices`
+- `GET /api/cosyvoice/meta`
+- `GET /api/cosyvoice/logs`
+- `POST /api/cosyvoice/tts`
+- `POST /api/cosyvoice/tts/upload`
+
+Legacy aliases remain available:
+
 - `GET /cosyvoice/profiles`
 - `GET /cosyvoice/meta`
 - `GET /cosyvoice3/capabilities`
@@ -100,4 +126,5 @@ OpenAI compatible:
 - `GET /v1/audio/voices`
 - `POST /v1/audio/speech`
 
-See [docs/api.md](docs/api.md) for payload examples.
+See [docs/api.md](docs/api.md), [docs/api_zh.md](docs/api_zh.md), and
+[docs/model-sources.md](docs/model-sources.md) for payload and asset details.

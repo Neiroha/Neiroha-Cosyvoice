@@ -29,6 +29,9 @@ class SynthesisInput:
     seed: int | None = None
     text_frontend: bool = True
     voice_name: str = ""
+    voice_set: str = ""
+    model_preset: str = ""
+    voice_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,10 @@ class SynthesisResult:
     rtf: float
     mode: str
     voice_name: str
+    backend: str = "cosyvoice3"
+    voice_set: str = ""
+    model_preset: str = ""
+    voice_id: str = ""
 
 
 def _patch_ruamel_loader_compat() -> None:
@@ -347,4 +354,7 @@ class CosyVoiceRuntime:
             rtf=rtf,
             mode=mode,
             voice_name=strip_text(request.voice_name),
+            voice_set=strip_text(request.voice_set),
+            model_preset=strip_text(request.model_preset),
+            voice_id=strip_text(request.voice_id),
         )

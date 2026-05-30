@@ -29,7 +29,10 @@ def health(
 ) -> dict[str, object]:
     return {
         "status": "ok",
+        "backend": "cosyvoice3",
+        "version": "0.1.0",
         "model": runtime.model_id,
+        "loaded_model": runtime.model_id if runtime.model_loaded else "",
         "model_loaded": runtime.model_loaded,
         "sample_rate": runtime.sample_rate,
         "api_url": getattr(request.app.state, "api_url", ""),

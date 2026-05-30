@@ -25,7 +25,7 @@ from app.core.runtime_logs import (
     RUNTIME_EVENTS,
     truncate_log,
 )
-from app.gradio_app import build_gradio_admin_blocks
+from app.admin.gradio_app import build_gradio_admin_blocks
 from app.services.cosyvoice_runtime import CosyVoiceRuntime
 
 LOGGER = logging.getLogger("neiroha.cosyvoice")
@@ -41,13 +41,16 @@ def parse_args() -> argparse.Namespace:
             "api",
             "admin",
             "api-admin",
-            "api-preload",
-            "api-admin-preload",
-            "webui",
-            "combined",
-            "combined-preload",
+            "serve",
         ],
-        default="api-admin",
+        default=None,
+        help="Compatibility alias for --surface. Omit it to use [startup].surface from configs/server.toml.",
+    )
+    parser.add_argument(
+        "--surface",
+        choices=["api", "admin", "both"],
+        default=None,
+        help="Override only the startup surface from configs/server.toml.",
     )
     parser.add_argument("--repo-dir", type=Path, default=DEFAULT_REPO_DIR)
     parser.add_argument("--profiles", type=Path, default=DEFAULT_PROFILE_PATH)
@@ -82,16 +85,28 @@ def configure_logging() -> None:
     )
 
 
-def mode_settings(mode: str, preload_model: bool) -> tuple[str, bool]:
-    if mode == "api-preload":
-        return "api", True
-    if mode in {"api-admin-preload", "combined-preload"}:
-        return "api-admin", True
-    if mode in {"webui", "admin-ui"}:
-        return "admin", preload_model
-    if mode == "combined":
-        return "api-admin", preload_model
-    return mode, preload_model
+def surface_to_mode(surface: object) -> str:
+    normalized = strip_text(surface).lower().replace("_", "-")
+    if normalized == "api":
+        return "api"
+    if normalized == "admin":
+        return "admin"
+    if normalized in {"both", "api-admin", "combined", "serve"}:
+        return "api-admin"
+    return "api-admin"
+
+
+def mode_settings(
+    *,
+    mode: str | None,
+    surface: str | None,
+    startup_config: dict[str, object],
+    preload_model: bool,
+) -> tuple[str, bool]:
+    configured_mode = surface_to_mode(surface or startup_config.get("surface", "both"))
+    if mode in {None, "", "serve"}:
+        return configured_mode, preload_model
+    return surface_to_mode(mode), preload_model
 
 
 def socket_bind_host(host: str) -> str:
@@ -230,8 +245,18 @@ def main() -> None:
     server_config = registry.server_config()
     api_config = server_config.get("api", {}) if isinstance(server_config.get("api"), dict) else {}
     admin_config = server_config.get("admin", {}) if isinstance(server_config.get("admin"), dict) else {}
-    effective_mode, preload_model = mode_settings(args.mode, args.preload_model)
-    preload_model = preload_model or _config_bool(api_config.get("preload_model"), False)
+    startup_config = server_config.get("startup", {}) if isinstance(server_config.get("startup"), dict) else {}
+    security_config = server_config.get("security", {}) if isinstance(server_config.get("security"), dict) else {}
+    config_preload = _config_bool(
+        startup_config.get("preload_model", api_config.get("preload_model")),
+        False,
+    )
+    effective_mode, preload_model = mode_settings(
+        mode=args.mode,
+        surface=args.surface,
+        startup_config=startup_config,
+        preload_model=args.preload_model or config_preload,
+    )
 
     if effective_mode != "admin":
         RUNTIME_EVENTS.reset_for_launch()
@@ -261,10 +286,16 @@ def main() -> None:
         LOGGER.info("Gradio Admin URL: %s", admin_url)
         LOGGER.info("Admin connects to FastAPI: %s", api_url)
         blocks = build_gradio_admin_blocks(api_base=api_url, admin_url=admin_url, registry=registry)
-        blocks.launch(server_name=admin_host, server_port=admin_port, show_error=True)
+        blocks.launch(
+            server_name=admin_host,
+            server_port=admin_port,
+            share=_config_bool(admin_config.get("share"), False),
+            show_error=True,
+        )
         return
 
-    preset = registry.get_model_preset(args.model_preset or registry.active_model_preset_id())
+    preset_id = first_non_empty(args.model_preset, startup_config.get("default_model_preset"), registry.active_model_preset_id())
+    preset = registry.get_model_preset(preset_id)
     runtime = CosyVoiceRuntime(
         model_dir=preset.model_dir,
         repo_dir=args.repo_dir,
@@ -308,7 +339,7 @@ def main() -> None:
     app = create_api_app(
         runtime,
         registry,
-        api_key=args.api_key,
+        api_key=first_non_empty(args.api_key, security_config.get("api_key")),
         api_url=http_url(api_host, api_port),
         admin_url=admin_url,
     )

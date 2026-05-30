@@ -416,8 +416,14 @@ class VoiceRegistry:
         if self.server_config_path.exists():
             return read_toml(self.server_config_path)
         return {
-            "api": {"host": "127.0.0.1", "port": 19890, "preload_model": False},
-            "admin": {"enabled": True, "host": "127.0.0.1", "port": 17870},
+            "api": {"host": "127.0.0.1", "port": 19890},
+            "admin": {"enabled": True, "host": "127.0.0.1", "port": 17870, "share": False},
+            "startup": {
+                "surface": "both",
+                "preload_model": False,
+                "default_model_preset": DEFAULT_MODEL_PRESET_ID,
+            },
+            "security": {"api_key": ""},
             "ui": {"title": "Neiroha CosyVoice3 Admin", "default_language": "zh"},
             "runtime": {
                 "active_model_preset": DEFAULT_MODEL_PRESET_ID,
@@ -427,7 +433,13 @@ class VoiceRegistry:
         }
 
     def active_model_preset_id(self) -> str:
-        runtime = self.server_config().get("runtime", {})
+        server_config = self.server_config()
+        startup = server_config.get("startup", {})
+        runtime = server_config.get("runtime", {})
+        if isinstance(startup, dict):
+            configured = first_non_empty(startup.get("default_model_preset"))
+            if configured:
+                return configured
         if isinstance(runtime, dict):
             return first_non_empty(runtime.get("active_model_preset"), DEFAULT_MODEL_PRESET_ID)
         return DEFAULT_MODEL_PRESET_ID

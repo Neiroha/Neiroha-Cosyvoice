@@ -4,6 +4,7 @@ import datetime as dt
 import hashlib
 import re
 import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -27,11 +28,38 @@ def openai_error(
     *,
     status_code: int = 400,
     error_type: str = "invalid_request_error",
+    code: str = "invalid_request",
+    details: dict[str, Any] | None = None,
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
-        content={"error": {"message": message, "type": error_type, "param": None, "code": None}},
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details or {},
+                "type": error_type,
+                "param": None,
+            }
+        },
     )
+
+
+def classify_error_code(message: str) -> str:
+    lowered = message.lower()
+    if "response_format" in lowered or "unsupported" in lowered:
+        return "unsupported_format"
+    if "model preset" in lowered:
+        return "model_preset_not_found"
+    if "voice set" in lowered or "未找到 voice set" in message:
+        return "voice_not_found"
+    if "未找到角色" in message or "profile" in lowered or "voice" in lowered:
+        return "voice_not_found"
+    if "prompt_audio" in lowered or "reference" in lowered or "audio" in lowered:
+        return "invalid_reference_audio"
+    if "model" in lowered and "load" in lowered:
+        return "model_not_loaded"
+    return "invalid_request"
 
 
 def extract_voice_name(value: Any) -> str:
@@ -69,6 +97,15 @@ def workspace_relative_path(path: Path) -> str:
         return resolved.relative_to(WORKSPACE_ROOT.resolve()).as_posix()
     except ValueError:
         return str(resolved)
+
+
+def header_value(value: Any) -> str:
+    text = strip_text(value)
+    try:
+        text.encode("latin-1")
+        return text
+    except UnicodeEncodeError:
+        return urllib.parse.quote(text, safe="")
 
 
 def write_runtime_output(content: bytes, voice_name: str, extension: str) -> Path:
@@ -121,17 +158,25 @@ def audio_response(result: SynthesisResult, response_format: str) -> Response:
         rtf=result.rtf,
         output=output_relative,
     )
+    output_format = (response_format or packed.extension).strip().lower()
+    headers = {
+        "Content-Disposition": f'inline; filename="{filename}"',
+        "X-Neiroha-Backend": result.backend,
+        "X-Neiroha-Model-Preset": result.model_preset,
+        "X-Neiroha-Voice": header_value(result.voice_id or result.voice_name),
+        "X-Neiroha-Sample-Rate": str(result.sample_rate),
+        "X-Neiroha-Inference-Ms": str(int(result.elapsed_seconds * 1000)),
+        "X-Neiroha-Output-Format": output_format,
+        "X-Neiroha-Output-Path": output_relative,
+        "X-Neiroha-Audio-Seconds": f"{result.audio_seconds:.6f}",
+        "X-Neiroha-Elapsed-Seconds": f"{result.elapsed_seconds:.6f}",
+        "X-Neiroha-RTF": f"{result.rtf:.6f}",
+        "X-Neiroha-CosyVoice-Mode": result.mode,
+    }
     return Response(
         content=packed.content,
         media_type=packed.media_type,
-        headers={
-            "Content-Disposition": f'inline; filename="{filename}"',
-            "X-Neiroha-Output-Path": output_relative,
-            "X-Neiroha-Audio-Seconds": f"{result.audio_seconds:.6f}",
-            "X-Neiroha-Elapsed-Seconds": f"{result.elapsed_seconds:.6f}",
-            "X-Neiroha-RTF": f"{result.rtf:.6f}",
-            "X-Neiroha-CosyVoice-Mode": result.mode,
-        },
+        headers={key: value for key, value in headers.items() if value != ""},
     )
 
 
@@ -246,4 +291,7 @@ def build_synthesis_input(
         seed=payload.seed,
         text_frontend=bool(payload.text_frontend),
         voice_name=profile.id if profile else profile_name,
+        voice_set=voice_set.id,
+        model_preset=profile.model_preset if profile else registry.active_model_preset_id(),
+        voice_id=profile.id if profile else profile_name,
     )

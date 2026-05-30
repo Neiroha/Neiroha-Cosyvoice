@@ -4,8 +4,7 @@ from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-
+from app.api.common import openai_error
 from app.api.routers.cosyvoice_native import router as cosyvoice_router
 from app.api.routers.health import router as health_router
 from app.api.routers.openai import router as openai_router
@@ -65,7 +64,12 @@ def create_api_app(
         x_api_key = request.headers.get("x-api-key", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else x_api_key
         if supplied != api_key:
-            return JSONResponse({"error": "Missing or invalid API key"}, status_code=401)
+            return openai_error(
+                "Missing or invalid API key",
+                status_code=401,
+                error_type="authentication_error",
+                code="auth_required",
+            )
         return await call_next(request)
 
     app.include_router(health_router)
